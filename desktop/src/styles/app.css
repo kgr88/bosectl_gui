@@ -1,0 +1,43 @@
+:root {
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+  color: #1d242d;
+  background: #eef1f5;
+  font-synthesis: none;
+  --accent: #225cc6;
+  --surface: #ffffff;
+  --border: #d8dee8;
+  --muted: #647184;
+  --danger: #a32929;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button { font: inherit; border: 1px solid #1a50b1; border-radius: 6px; padding: 8px 14px; color: white; background: var(--accent); cursor: pointer; }
+button:disabled { cursor: default; opacity: .55; }
+button:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 2px; }
+.app-shell { width: min(720px, 100%); margin: 0 auto; padding: 28px; }
+.app-header, .card__heading, .device-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 0; font-size: 28px; }
+h2 { margin-bottom: 0; font-size: 20px; }
+.eyebrow { margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.status { border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; background: var(--surface); font-size: 12px; text-transform: capitalize; }
+.status--connected { color: #126236; border-color: #65a77f; }
+.status--error { color: var(--danger); border-color: #d69292; }
+.card { margin-top: 28px; border: 1px solid var(--border); border-radius: 12px; padding: 22px; background: var(--surface); box-shadow: 0 8px 26px rgb(24 38 58 / 7%); }
+.muted, footer { color: var(--muted); }
+.muted { margin: 22px 0 0; }
+.device-list { margin: 20px 0 0; padding: 0; list-style: none; }
+.device-list li { border-top: 1px solid var(--border); padding: 12px 0; }
+.device-list small { display: block; color: var(--muted); margin-top: 3px; }
+.error { display: flex; gap: 10px; margin-top: 20px; border-left: 3px solid var(--danger); padding: 10px 12px; color: var(--danger); background: #fff2f2; }
+footer { margin-top: 18px; font-size: 12px; text-align: center; }
+
+@media (prefers-color-scheme: dark) {
+  :root { color: #edf2f8; background: #13171d; --surface: #1d232c; --border: #37404d; --muted: #a7b2c2; --accent: #5c91ee; }
+  button { color: #081329; }
+  .error { background: #341d22; color: #ffb8b8; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+@media (forced-colors: active) { button, .card, .status { forced-color-adjust: none; } }

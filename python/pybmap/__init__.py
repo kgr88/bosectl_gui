@@ -30,7 +30,7 @@ from .errors import (
 from .types import DeviceStatus, ModeConfig, EqBand, ButtonMapping, BmapResponse
 from .protocol import bmap_packet, parse_response, parse_all_responses
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 
 def connect(mac=None, device_type=None):

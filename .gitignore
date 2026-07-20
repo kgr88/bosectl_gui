@@ -7,3 +7,12 @@ build/
 .venv/
 .pytest_cache/
 target/
+node_modules/
+.pnpm-store/
+desktop/dist/
+desktop/src-tauri/gen/
+
+# dev files
+/AGENTS.md
+/GUI.md
+/implementation.md
