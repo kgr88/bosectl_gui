@@ -1,38 +1,24 @@
-import type { DiscoveredDevice } from "../contracts";
+import { useState } from "react";
+import type { ConnectionTarget, DiscoveredDevice } from "../contracts";
 
 interface Props {
   devices: DiscoveredDevice[];
   busy: boolean;
+  state: string;
   onDiscover: () => void;
   onConnect: (device: DiscoveredDevice) => void;
+  onManualConnect: (target: ConnectionTarget) => void;
 }
 
-export function ConnectionPage({ devices, busy, onDiscover, onConnect }: Props) {
-  return (
-    <section className="card" aria-labelledby="connection-title">
-      <div className="card__heading">
-        <div>
-          <p className="eyebrow">Windows Bluetooth</p>
-          <h2 id="connection-title">Choose a paired headset</h2>
-        </div>
-        <button type="button" onClick={onDiscover} disabled={busy}>
-          {busy ? "Searching…" : "Find devices"}
-        </button>
-      </div>
-      {devices.length === 0 ? (
-        <p className="muted">Discovery and device operations connect to the long-lived backend in Stage 2.</p>
-      ) : (
-        <ul className="device-list">
-          {devices.map((device) => (
-            <li key={device.device_id}>
-              <span><strong>{device.name}</strong><small>{device.supported ? "Supported" : "Unsupported"}</small></span>
-              <button type="button" disabled={busy || !device.supported} onClick={() => onConnect(device)}>
-                Connect
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+export function ConnectionPage({ devices, busy, state, onDiscover, onConnect, onManualConnect }: Props) {
+  const [address, setAddress] = useState("");
+  const [deviceType, setDeviceType] = useState<"qc_ultra2" | "qc35">("qc_ultra2");
+  return <div className="page-grid"><section className="card" aria-labelledby="connection-title">
+    <div className="card__heading"><div><p className="eyebrow">Windows Bluetooth</p><h2 id="connection-title">Choose a paired headset</h2></div><button type="button" onClick={onDiscover} disabled={busy}>{busy ? (state === "connecting" ? "Connecting…" : "Searching…") : "Find devices"}</button></div>
+    {devices.length === 0 ? <p className="muted">Pair your headset in Windows Settings, then search again.</p> : <ul className="device-list">{devices.map((device) => <li key={device.device_id}><span><strong>{device.name}</strong><small>{device.supported ? "Supported" : "Choose its model manually"}</small></span><button type="button" disabled={busy || !device.supported} onClick={() => onConnect(device)}>Connect</button></li>)}</ul>}
+  </section><section className="card" aria-labelledby="manual-title"><p className="eyebrow">Fallback</p><h2 id="manual-title">Connect manually</h2><p className="muted">Use this when Windows reports the headset without enough model information.</p><form className="manual-form" onSubmit={(event) => { event.preventDefault(); onManualConnect({ kind: "manual", address: address.trim(), device_type: deviceType }); }}>
+    <label>Bluetooth address<input required pattern="[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}" placeholder="AA:BB:CC:DD:EE:FF" value={address} onChange={(event) => setAddress(event.currentTarget.value)} /></label>
+    <label>Headset model<select value={deviceType} onChange={(event) => setDeviceType(event.currentTarget.value as typeof deviceType)}><option value="qc_ultra2">QC Ultra 2</option><option value="qc35">QC35 / QC35 II</option></select></label>
+    <button type="submit" disabled={busy || !address.trim()}>Connect</button>
+  </form></section></div>;
 }

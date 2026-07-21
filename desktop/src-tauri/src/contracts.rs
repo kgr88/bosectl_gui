@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-pub const PROTOCOL_VERSION: u8 = 1;
+pub const PROTOCOL_VERSION: u8 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -80,6 +80,10 @@ pub struct ApiError {
 }
 
 impl ApiError {
+    pub fn new(code: ErrorCode, message: impl Into<String>, retryable: bool) -> Self {
+        Self { code, message: message.into(), retryable, details: None }
+    }
+
     pub fn invalid(message: impl Into<String>) -> Self {
         Self {
             code: ErrorCode::InvalidParams,
@@ -90,12 +94,19 @@ impl ApiError {
     }
 
     pub fn backend_unavailable() -> Self {
-        Self {
-            code: ErrorCode::BackendUnavailable,
-            message: "The Stage 2 backend client is not connected".into(),
-            retryable: true,
-            details: None,
-        }
+        Self::new(ErrorCode::BackendUnavailable, "The device backend is unavailable", true)
+    }
+
+    pub fn backend_crashed(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::BackendCrashed, message, true)
+    }
+
+    pub fn timeout() -> Self {
+        Self::new(ErrorCode::BackendTimeout, "The backend request timed out", true)
+    }
+
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::Internal, message, false)
     }
 }
 
@@ -190,18 +201,11 @@ pub struct ProfileCapability {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ActionCapabilities {
-    pub enter_pairing: bool,
-    pub power_off: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DeviceCapabilities {
     pub noise_control: Option<NoiseControlCapability>,
     pub equalizer: Vec<EqBandCapability>,
     pub settings: Vec<SettingCapability>,
     pub profiles: Option<ProfileCapability>,
-    pub actions: ActionCapabilities,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -230,6 +234,30 @@ pub struct DeviceSnapshot {
     pub revision: u64,
 }
 
+impl DeviceSnapshot {
+    pub fn validate_wire(&self) -> Result<(), ApiError> {
+        if self.battery.as_ref().is_some_and(|battery| battery.percent > 100)
+            || self.identity.as_ref().is_some_and(|identity| {
+                !valid_text(&identity.device_id, 256)
+                    || !valid_text(&identity.name, 256)
+                    || !valid_text(&identity.model, 256)
+                    || identity.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
+            })
+            || self.capabilities.equalizer.iter().any(|band| band.minimum > band.maximum || band.step == 0)
+            || self.capabilities.settings.iter().any(|setting| {
+                setting.step == Some(0)
+                    || setting.minimum.zip(setting.maximum).is_some_and(|(minimum, maximum)| minimum > maximum)
+            })
+            || self.values.noise_control.as_ref().is_some_and(|noise| !is_scalar(&noise.value))
+            || self.values.settings.values().any(|value| !is_scalar(value))
+        {
+            Err(ApiError::backend_crashed("The backend returned an invalid device snapshot"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiscoveredDevice {
     pub device_id: String,
@@ -254,7 +282,7 @@ impl ConnectionTarget {
         match self {
             Self::Discovered { device_id } if valid_text(device_id, 256) => Ok(()),
             Self::Manual { address, device_type }
-                if valid_text(address, 64) && matches!(device_type.as_str(), "qc_ultra2" | "qc35") => Ok(()),
+                if valid_bluetooth_address(address) && matches!(device_type.as_str(), "qc_ultra2" | "qc35") => Ok(()),
             Self::Discovered { .. } => Err(ApiError::invalid("device_id is invalid")),
             Self::Manual { .. } => Err(ApiError::invalid("manual target is invalid")),
         }
@@ -316,10 +344,19 @@ pub struct SetSettingRequest {
 
 impl SetSettingRequest {
     pub fn validate(&self) -> Result<(), ApiError> {
-        if self.value.is_boolean() || self.value.is_string() || self.value.is_number() {
+        let valid = match self.key {
+            SettingKey::VoicePrompts | SettingKey::Multipoint | SettingKey::AutoPause
+            | SettingKey::AutoAnswer | SettingKey::WindBlock | SettingKey::AncToggle => self.value.is_boolean(),
+            SettingKey::Sidetone => matches!(self.value.as_str(), Some("off" | "low" | "medium" | "high")),
+            SettingKey::SpatialAudio => matches!(self.value.as_str(), Some("off" | "room" | "motion")),
+            SettingKey::VoicePromptLanguage | SettingKey::ButtonAction => self.value.as_str().is_some_and(|value| valid_text(value, 128)),
+            SettingKey::Routing => self.value.as_str().is_some_and(valid_bluetooth_address),
+            SettingKey::Source => false,
+        };
+        if valid {
             Ok(())
         } else {
-            Err(ApiError::invalid("setting value must be a boolean, string, or number"))
+            Err(ApiError::invalid("setting key and value do not match"))
         }
     }
 }
@@ -388,6 +425,21 @@ pub struct DiscoverResult {
     pub devices: Vec<DiscoveredDevice>,
 }
 
+impl DiscoverResult {
+    pub fn validate_wire(&self) -> Result<(), ApiError> {
+        if self.devices.iter().any(|device| {
+            !valid_text(&device.device_id, 256)
+                || !valid_text(&device.name, 256)
+                || device.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
+                || device.device_type.as_ref().is_some_and(|kind| !matches!(kind.as_str(), "qc_ultra2" | "qc35"))
+        }) {
+            Err(ApiError::backend_crashed("The backend returned invalid discovery data"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProfileList {
     pub generation: u64,
@@ -395,8 +447,63 @@ pub struct ProfileList {
     pub profiles: Vec<Profile>,
 }
 
+impl ProfileList {
+    pub fn validate_wire(&self) -> Result<(), ApiError> {
+        if self.profiles.iter().any(|profile| {
+            !valid_text(&profile.profile_id, 256) || !valid_text(&profile.name, 64)
+                || profile.cnc_level > 10 || !matches!(profile.spatial.as_str(), "off" | "room" | "motion")
+        }) {
+            Err(ApiError::backend_crashed("The backend returned invalid profile data"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "event", rename_all = "snake_case")]
+pub enum DeviceEvent {
+    SnapshotChanged { data: DeviceSnapshot },
+    ConnectionChanged { data: ConnectionChangedData },
+    BackendError { data: ApiError },
+}
+
+impl DeviceEvent {
+    pub fn validate_wire(&self) -> Result<(), ApiError> {
+        match self {
+            Self::SnapshotChanged { data } => data.validate_wire(),
+            Self::ConnectionChanged { data } if data.reason.as_ref().is_some_and(|reason| reason.chars().count() > 256) => {
+                Err(ApiError::backend_crashed("The backend returned an invalid connection event"))
+            }
+            Self::BackendError { data } if data.message.chars().count() > 1024 => {
+                Err(ApiError::backend_crashed("The backend returned an invalid error event"))
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConnectionChangedData {
+    pub state: ConnectionState,
+    pub generation: u64,
+    pub revision: u64,
+    pub reason: Option<String>,
+}
+
 fn valid_text(value: &str, maximum: usize) -> bool {
     !value.is_empty() && value.chars().count() <= maximum
+}
+
+fn valid_bluetooth_address(value: &str) -> bool {
+    let parts: Vec<_> = value.split(':').collect();
+    parts.len() == 6 && parts.iter().all(|part| {
+        part.len() == 2 && part.chars().all(|character| character.is_ascii_hexdigit())
+    })
+}
+
+fn is_scalar(value: &Value) -> bool {
+    value.is_boolean() || value.is_string() || value.is_number()
 }
 
 #[cfg(test)]
@@ -429,6 +536,6 @@ mod tests {
 
     #[test]
     fn protocol_version_is_frozen() {
-        assert_eq!(PROTOCOL_VERSION, 1);
+        assert_eq!(PROTOCOL_VERSION, 2);
     }
 }

@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 2 as const;
 
 export type ConnectionState =
   | "disconnected"
@@ -132,10 +132,6 @@ export interface DeviceCapabilities {
   equalizer: EqBandCapability[];
   settings: SettingCapability[];
   profiles: ProfileCapability | null;
-  actions: {
-    enter_pairing: boolean;
-    power_off: boolean;
-  };
 }
 
 export type SettingValue = boolean | string | number;
@@ -260,6 +256,16 @@ function isChoice(value: unknown): value is Choice {
   return isObject(value) && typeof value.value === "string" && typeof value.label === "string";
 }
 
+function isSettingCapability(value: unknown): value is SettingCapability {
+  return isObject(value) && typeof value.key === "string"
+    && ["toggle", "choice", "range", "text"].includes(String(value.kind))
+    && typeof value.label === "string" && typeof value.writable === "boolean"
+    && Array.isArray(value.options) && value.options.every(isChoice)
+    && (value.minimum === null || Number.isFinite(value.minimum))
+    && (value.maximum === null || Number.isFinite(value.maximum))
+    && (value.step === null || (Number.isFinite(value.step) && (value.step as number) > 0));
+}
+
 function isRange(value: unknown): value is RangeCapability {
   return isObject(value) && Number.isFinite(value.minimum) && Number.isFinite(value.maximum)
     && Number.isFinite(value.step) && (value.step as number) > 0;
@@ -292,7 +298,7 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
       || !(value.battery.charging === null || typeof value.battery.charging === "boolean"))) return false;
   if (value.firmware !== null && (!isObject(value.firmware) || typeof value.firmware.version !== "string")) return false;
   if (!isObject(value.capabilities) || !Array.isArray(value.capabilities.equalizer)
-      || !Array.isArray(value.capabilities.settings) || !isObject(value.capabilities.actions)) {
+      || !Array.isArray(value.capabilities.settings)) {
     return false;
   }
   const noiseCapability = value.capabilities.noise_control;
@@ -302,8 +308,7 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
       || !Array.isArray(noiseCapability.options) || !noiseCapability.options.every(isChoice))) return false;
   if (!value.capabilities.equalizer.every((band) => isObject(band) && isRange(band)
       && typeof band.id === "string" && typeof band.label === "string")) return false;
-  if (typeof value.capabilities.actions.enter_pairing !== "boolean"
-      || typeof value.capabilities.actions.power_off !== "boolean") return false;
+  if (!value.capabilities.settings.every(isSettingCapability)) return false;
   if (!isObject(value.values) || !hasOnlyScalarValues(value.values.eq)
       || !hasOnlyScalarValues(value.values.settings) || !isNullableString(value.values.profile_id)) {
     return false;

@@ -5,12 +5,20 @@ dist/
 build/
 .eggs/
 .venv/
+.venv-win/
 .pytest_cache/
 target/
 node_modules/
 .pnpm-store/
 desktop/dist/
 desktop/src-tauri/gen/
+
+# Tauri icon generation emits every platform; this project ships Windows only.
+/desktop/src-tauri/icons/*
+!/desktop/src-tauri/icons/icon.ico
+
+# This workspace uses pnpm; ignore npm metadata created at the repository root.
+/package-lock.json
 
 # dev files
 /AGENTS.md

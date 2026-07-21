@@ -1,7 +1,7 @@
 """Process boundary for the long-lived GUI backend.
 
-The backend is intentionally toolkit-free.  Stage 1 freezes its wire contract;
-device discovery and BMAP operations are implemented in Stage 2.
+The backend is intentionally toolkit-free. It owns one serialized BMAP
+connection and exposes only validated immutable wire values.
 """
 
 from .protocol import PROTOCOL_VERSION

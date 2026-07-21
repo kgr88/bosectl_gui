@@ -18,6 +18,7 @@ import {
   isDeviceEvent,
   isProfileList,
 } from "./contracts";
+import { createMockApi } from "./mockApi";
 
 export interface BoseApi {
   backendInfo(): Promise<BackendInfo>;
@@ -31,8 +32,6 @@ export interface BoseApi {
   getProfiles(generation: number): Promise<ProfileList>;
   setProfile(generation: number, profile: ProfileInput): Promise<ProfileList>;
   deleteProfile(generation: number, profileId: string): Promise<ProfileList>;
-  enterPairing(generation: number): Promise<DeviceSnapshot>;
-  powerOff(generation: number): Promise<DeviceSnapshot>;
   subscribe(listener: (event: DeviceEvent) => void): Promise<UnlistenFn>;
 }
 
@@ -46,7 +45,7 @@ async function snapshotCommand(command: string, args?: Record<string, unknown>):
   return result;
 }
 
-export const api: BoseApi = {
+const tauriApi: BoseApi = {
   async backendInfo() {
     const result: unknown = await invoke("get_backend_info");
     if (!isBackendInfo(result)) throw boundaryError("get_backend_info returned invalid data");
@@ -94,10 +93,13 @@ export const api: BoseApi = {
     return result;
   },
 
-  enterPairing: (generation) => snapshotCommand("enter_pairing", { request: { generation } }),
-  powerOff: (generation) => snapshotCommand("power_off", { request: { generation } }),
-
   subscribe: (listener) => listen<unknown>("bose://device-event", (event) => {
     if (isDeviceEvent(event.payload)) listener(event.payload);
   }),
 };
+
+export const api: BoseApi = import.meta.env.DEV
+  && typeof window !== "undefined"
+  && !("__TAURI_INTERNALS__" in window)
+  ? createMockApi()
+  : tauriApi;

@@ -1,15 +1,49 @@
-"""Single-threaded JSON-lines command worker."""
+"""Serialized JSON-lines worker with newest-value write coalescing."""
 
 import sys
+import threading
+from collections import deque
+from queue import Empty, Queue
 
 from .protocol import (
-    ProtocolError,
-    encode_message,
-    error_response,
-    parse_request_line,
-    success_response,
+    ProtocolError, encode_message, error_response, event_message,
+    parse_request_line, success_response,
 )
 from .service import BackendService
+from .protocol import MAX_LINE_BYTES
+
+
+COALESCE_SECONDS = 0.025
+_EOF = object()
+
+
+def _reader(stdin, incoming):
+    while True:
+        line = stdin.readline(MAX_LINE_BYTES + 1)
+        if not line:
+            break
+        if len(line) >= MAX_LINE_BYTES + 1 and not line.endswith("\n"):
+            while True:
+                remainder = stdin.readline(MAX_LINE_BYTES + 1)
+                if not remainder or remainder.endswith("\n"):
+                    break
+        incoming.put(line)
+    incoming.put(_EOF)
+
+
+def _coalesce_key(request):
+    if request.method == "set_eq":
+        return (request.method, request.params["generation"])
+    if request.method == "set_noise_control" and request.params["kind"] == "cnc":
+        return (request.method, request.params["generation"], "cnc")
+    return None
+
+
+def _parse_work(line):
+    try:
+        return (parse_request_line(line), None)
+    except ProtocolError as exc:
+        return (None, exc)
 
 
 def run(stdin=None, stdout=None, stderr=None, service=None):
@@ -17,24 +51,59 @@ def run(stdin=None, stdout=None, stderr=None, service=None):
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
     service = service or BackendService()
+    incoming = Queue()
+    backlog = deque()
+    threading.Thread(target=_reader, args=(stdin, incoming), daemon=True).start()
 
-    for line in stdin:
-        request_id = ""
-        try:
-            request = parse_request_line(line)
-            request_id = request.request_id
-            result = service.handle(request.method, request.params)
-            message = success_response(request_id, result)
-        except ProtocolError as exc:
-            request_id = exc.request_id or request_id
+    while True:
+        item = backlog.popleft() if backlog else incoming.get()
+        if item is _EOF:
+            break
+        request, parse_error = item if isinstance(item, tuple) else _parse_work(item)
+        group = [request] if request is not None else []
+        key = _coalesce_key(request) if request is not None else None
+        if key is not None:
+            while True:
+                try:
+                    next_item = incoming.get(timeout=COALESCE_SECONDS)
+                except Empty:
+                    break
+                if next_item is _EOF:
+                    backlog.append(_EOF)
+                    break
+                next_work = _parse_work(next_item)
+                next_request, _ = next_work
+                if next_request is not None and _coalesce_key(next_request) == key:
+                    group.append(next_request)
+                else:
+                    backlog.append(next_work)
+                    break
+
+        if parse_error is not None:
             message = error_response(
-                request_id, exc.code, exc.message, exc.retryable, exc.details
+                parse_error.request_id, parse_error.code, parse_error.message,
+                parse_error.retryable, parse_error.details,
             )
+            stdout.write(encode_message(message))
+            stdout.flush()
+            continue
+
+        latest = group[-1]
+        try:
+            result = service.handle(latest.method, latest.params)
+            messages = [success_response(item.request_id, result) for item in group]
+        except ProtocolError as exc:
+            messages = [error_response(
+                item.request_id, exc.code, exc.message, exc.retryable, exc.details
+            ) for item in group]
         except Exception as exc:  # The wire never exposes exception types or traces.
             print("backend internal error: %s" % exc, file=stderr)
-            message = error_response(request_id, "INTERNAL", "internal backend error")
+            messages = [error_response(item.request_id, "INTERNAL", "internal backend error") for item in group]
 
-        stdout.write(encode_message(message))
+        for message in messages:
+            stdout.write(encode_message(message))
+        for event, data in service.drain_events():
+            stdout.write(encode_message(event_message(event, data)))
         stdout.flush()
         if service.stopping:
             break

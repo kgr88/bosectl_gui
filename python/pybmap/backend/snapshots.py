@@ -41,12 +41,9 @@ SettingCapability = namedtuple(
 ProfileCapability = namedtuple(
     "ProfileCapability", ["maximum", "supports_delete"]
 )
-ActionCapabilities = namedtuple(
-    "ActionCapabilities", ["enter_pairing", "power_off"]
-)
 DeviceCapabilities = namedtuple(
     "DeviceCapabilities",
-    ["noise_control", "equalizer", "settings", "profiles", "actions"],
+    ["noise_control", "equalizer", "settings", "profiles"],
 )
 DeviceValues = namedtuple(
     "DeviceValues", ["noise_control", "eq", "settings", "profile_id"]

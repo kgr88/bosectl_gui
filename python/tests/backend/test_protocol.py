@@ -35,8 +35,6 @@ def test_parameterless_operations_parse(method):
         ("set_setting", {"generation": 3, "key": "sidetone", "value": "medium"}),
         ("get_profiles", {"generation": 3}),
         ("delete_profile", {"generation": 3, "profile_id": "8"}),
-        ("enter_pairing", {"generation": 3}),
-        ("power_off", {"generation": 3}),
     ],
 )
 def test_operation_contracts_parse(method, params):
@@ -47,7 +45,7 @@ def test_all_declared_methods_have_a_validator_path():
     assert set(METHODS) == {
         "hello", "discover", "connect", "disconnect", "get_snapshot",
         "set_noise_control", "set_eq", "set_setting", "get_profiles",
-        "set_profile", "delete_profile", "enter_pairing", "power_off", "shutdown",
+        "set_profile", "delete_profile", "shutdown",
     }
 
 
@@ -55,8 +53,8 @@ def test_all_declared_methods_have_a_validator_path():
     "payload,code",
     [
         ("not json", "INVALID_REQUEST"),
-        ('{"v":1,"id":"1","method":"set_setting","params":{"generation":1,"key":"sidetone","value":NaN}}', "INVALID_REQUEST"),
-        (json.dumps({"v": 2, "id": "1", "method": "hello", "params": {}}), "UNSUPPORTED_PROTOCOL"),
+        ('{"v":2,"id":"1","method":"set_setting","params":{"generation":1,"key":"sidetone","value":NaN}}', "INVALID_REQUEST"),
+        (json.dumps({"v": 1, "id": "1", "method": "hello", "params": {}}), "UNSUPPORTED_PROTOCOL"),
         (request("missing"), "UNKNOWN_METHOD"),
         (request("set_eq", {"generation": 1, "bass": 11, "mid": 0, "treble": 0}), "INVALID_PARAMS"),
         (request("hello", {"unexpected": True}), "INVALID_PARAMS"),
@@ -78,10 +76,35 @@ def test_worker_handshake_and_shutdown_use_stdout_only_for_protocol():
     messages = [json.loads(line) for line in stdout.getvalue().splitlines()]
     assert messages[0]["result"]["protocol_version"] == PROTOCOL_VERSION
     assert messages[0]["result"]["operations"] == list(METHODS)
-    assert messages[1] == {"v": 1, "id": "43", "result": {"ok": True}}
+    assert messages[1] == {"v": PROTOCOL_VERSION, "id": "43", "result": {"ok": True}}
     assert stderr.getvalue() == ""
 
 
 def test_encoder_emits_exactly_one_compact_line():
-    encoded = encode_message({"v": 1, "id": "x", "result": {"ok": True}})
-    assert encoded == '{"v":1,"id":"x","result":{"ok":true}}\n'
+    encoded = encode_message({"v": PROTOCOL_VERSION, "id": "x", "result": {"ok": True}})
+    assert encoded == '{"v":%d,"id":"x","result":{"ok":true}}\n' % PROTOCOL_VERSION
+
+
+def test_worker_coalesces_rapid_equalizer_writes_and_answers_every_request():
+    class Service:
+        stopping = False
+        calls = []
+
+        def handle(self, method, params):
+            self.calls.append((method, params))
+            return {"revision": len(self.calls), "bass": params["bass"]}
+
+        def drain_events(self):
+            return []
+
+    lines = "".join(request("set_eq", {
+        "generation": 1, "bass": value, "mid": 0, "treble": 0,
+    }, request_id=str(value)) + "\n" for value in (1, 2, 3))
+    service = Service()
+    stdout = io.StringIO()
+    run(stdin=io.StringIO(lines), stdout=stdout, stderr=io.StringIO(), service=service)
+    responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+    assert len(service.calls) == 1
+    assert service.calls[0][1]["bass"] == 3
+    assert [response["id"] for response in responses] == ["1", "2", "3"]
+    assert all(response["result"]["bass"] == 3 for response in responses)

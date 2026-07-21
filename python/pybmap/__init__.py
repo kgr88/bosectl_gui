@@ -33,7 +33,7 @@ from .protocol import bmap_packet, parse_response, parse_all_responses
 __version__ = "0.3.0"
 
 
-def connect(mac=None, device_type=None):
+def connect(mac=None, device_type=None, transport_factory=None):
     """Connect to a BMAP device.
 
     Args:
@@ -60,11 +60,14 @@ def connect(mac=None, device_type=None):
             device_type = detected_type
 
     if device_type is None:
-        device_type = "qc_ultra2"
+        raise BmapNotFoundError(
+            "Device type could not be identified; pass device_type='qc_ultra2' or 'qc35'"
+        )
 
     device = get_device(device_type)
     channel = getattr(device, "RFCOMM_CHANNEL", 2)
-    transport = RfcommTransport(mac, channel=channel)
+    transport_factory = transport_factory or RfcommTransport
+    transport = transport_factory(mac, channel=channel)
     transport.connect()
 
     # Some devices require an init packet before responding.

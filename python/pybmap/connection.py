@@ -170,6 +170,10 @@ class BmapConnection:
         """Noise cancellation (current, max) tuple."""
         return self._get("cnc")
 
+    def audio_settings(self):
+        """Current public audio-settings value for capability-driven clients."""
+        return self._get("audio_settings")
+
     def eq(self):
         """EQ bands (list of EqBand)."""
         return self._get("eq")
@@ -337,11 +341,12 @@ class BmapConnection:
         """
         if not self.has_feature("audio_settings"):
             raise BmapError("Device does not support direct audio settings")
-        settings = self._get("audio_settings")
+        settings = self.audio_settings()
         feat = self._feature("audio_settings")
         builder = feat["builder"]
         self._setget("audio_settings", builder(
             cnc_level=overrides.get("cnc_level", settings.cnc_level),
+            auto_cnc=overrides.get("auto_cnc", settings.auto_cnc),
             spatial=overrides.get("spatial", settings.spatial),
             wind_block=overrides.get("wind_block", settings.wind_block),
             anc_toggle=overrides.get("anc_toggle", settings.anc_toggle),
@@ -391,6 +396,19 @@ class BmapConnection:
         feat = self._feature("voice_prompts")
         builder = feat.get("builder")
         self._setget("voice_prompts", builder(enabled, lang_id))
+
+    def set_prompt_language(self, language):
+        """Set the prompt language while preserving the enabled state."""
+        enabled, _ = self.prompts()
+        language_id = None
+        for candidate_id, candidate_name in VOICE_LANGUAGES.items():
+            if candidate_name.lower() == language.lower():
+                language_id = candidate_id
+                break
+        if language_id is None:
+            raise ValueError("Unknown voice prompt language")
+        builder = self._feature("voice_prompts").get("builder")
+        self._setget("voice_prompts", builder(enabled, language_id))
 
     def power_off(self):
         """Power off the device."""
@@ -486,6 +504,45 @@ class BmapConnection:
         """List all mode profiles (presets + custom). Returns list of ModeConfig."""
         return list(self.modes().values())
 
+    def save_profile(self, profile_id=None, name="Custom", cnc_level=0,
+                     auto_cnc=False, spatial=0, wind_block=True, anc_toggle=True):
+        """Create or update a profile by stable numeric slot identifier."""
+        modes = self.modes()
+        if profile_id is None:
+            slot = self._find_free_slot(modes)
+            if slot is None:
+                raise BmapError("No free profile slot available")
+            config = None
+        else:
+            try:
+                slot = int(profile_id)
+            except (TypeError, ValueError):
+                raise ValueError("profile_id must be a numeric slot")
+            if slot not in self._device.EDITABLE_SLOTS:
+                raise BmapError("Profile slot is not editable")
+            config = modes.get(slot)
+            if config is not None and not config.editable:
+                raise BmapError("Profile slot is not editable")
+        overrides = {
+            "name": name, "cnc_level": cnc_level, "auto_cnc": auto_cnc,
+            "spatial": spatial, "wind_block": wind_block, "anc_toggle": anc_toggle,
+        }
+        self._write_mode_from_config(slot, config, **overrides)
+        return slot
+
+    def delete_profile_by_id(self, profile_id):
+        """Delete an editable profile by stable numeric slot identifier."""
+        try:
+            slot = int(profile_id)
+        except (TypeError, ValueError):
+            raise ValueError("profile_id must be a numeric slot")
+        modes = self.modes()
+        config = modes.get(slot)
+        if slot not in self._device.EDITABLE_SLOTS or config is None or not config.editable:
+            raise BmapError("Profile slot is not editable")
+        self._write_mode(slot, "None", cnc_level=0, auto_cnc=False, spatial=0,
+                         wind_block=0, anc_toggle=0)
+
     # ── Low-Level ────────────────────────────────────────────────────────────
 
     def send_raw(self, hex_str):
@@ -503,6 +560,11 @@ class BmapConnection:
     def preset_modes(self):
         """Preset mode definitions dict (name -> {idx, description})."""
         return self._device.PRESET_MODES
+
+    @property
+    def editable_profile_slots(self):
+        """Stable profile slot identifiers reported by the device config."""
+        return tuple(self._device.EDITABLE_SLOTS)
 
     def has_feature(self, name):
         """Check if the connected device supports a feature."""
@@ -556,7 +618,7 @@ class BmapConnection:
                 return idx
         return None
 
-    def _write_mode(self, slot, name, cnc_level=0, spatial=0,
+    def _write_mode(self, slot, name, cnc_level=0, auto_cnc=False, spatial=0,
                     wind_block=1, anc_toggle=1, prompt_b1=0, prompt_b2=0):
         """Write a mode config to a slot via ModeConfig SETGET."""
         feat = self._feature("mode_config")
@@ -565,7 +627,8 @@ class BmapConnection:
             raise BmapError("Device does not support mode configuration")
         payload = builder(
             mode_idx=slot, name=name, cnc_level=cnc_level,
-            spatial=spatial, wind_block=wind_block, anc_toggle=anc_toggle,
+            auto_cnc=auto_cnc, spatial=spatial, wind_block=wind_block,
+            anc_toggle=anc_toggle,
             prompt_b1=prompt_b1, prompt_b2=prompt_b2,
         )
         fblock, func = feat["addr"]
@@ -579,12 +642,15 @@ class BmapConnection:
     def _write_mode_from_config(self, slot, config, **overrides):
         """Write a mode config preserving existing values, with overrides."""
         if config is None:
-            self._write_mode(slot, "Custom", **overrides)
+            values = dict(overrides)
+            values.setdefault("name", "Custom")
+            self._write_mode(slot, **values)
             return
 
         kw = {
             "name": overrides.get("name", config.name),
             "cnc_level": overrides.get("cnc_level", config.cnc_level),
+            "auto_cnc": overrides.get("auto_cnc", config.auto_cnc),
             "spatial": overrides.get("spatial", config.spatial),
             "wind_block": overrides.get("wind_block", config.wind_block),
             "anc_toggle": overrides.get("anc_toggle", config.anc_toggle),

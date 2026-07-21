@@ -1,4 +1,4 @@
-# Stage 1 release scaffold. Run from the repository root:
+# Release scaffold (final Tauri externalBin wiring is Stage 4). Run from the repository root:
 #   pyinstaller packaging/windows/pyinstaller.spec
 from pathlib import Path
 

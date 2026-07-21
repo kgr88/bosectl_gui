@@ -161,6 +161,29 @@ class TestPublicAPI:
             assert dev.battery() == 70
         assert transport.closed is True
 
+    def test_save_new_profile_passes_name_and_auto_cnc_once(self, mock_dev, monkeypatch):
+        written = {}
+        monkeypatch.setattr(mock_dev, "modes", lambda: {})
+        monkeypatch.setattr(mock_dev, "_write_mode", lambda slot, **values: written.update(slot=slot, **values))
+
+        slot = mock_dev.save_profile(
+            name="Commute", cnc_level=6, auto_cnc=True, spatial=2,
+            wind_block=False, anc_toggle=True,
+        )
+
+        assert slot == 4
+        assert written == {
+            "slot": 4, "name": "Commute", "cnc_level": 6,
+            "auto_cnc": True, "spatial": 2, "wind_block": False,
+            "anc_toggle": True,
+        }
+
+    def test_save_profile_rejects_built_in_slot(self, mock_dev, monkeypatch):
+        monkeypatch.setattr(mock_dev, "modes", lambda: {})
+
+        with pytest.raises(BmapError, match="not editable"):
+            mock_dev.save_profile(profile_id="0", name="Changed quiet")
+
 
 class TestErrorHandling:
     def test_unsupported_feature(self, mock_dev):

@@ -1,30 +1,40 @@
 # bosectl Windows desktop development
 
-Stage 1 provides the Tauri 2, React, TypeScript, and Python-sidecar foundation.
-The IPC and renderer command contracts are frozen in
-`../docs/windows-gui-protocol.md`. Bluetooth operations intentionally return
-`BACKEND_UNAVAILABLE` until the Stage 2 sidecar and Rust supervisor are added;
-`hello` and `shutdown` already run end to end in the Python worker.
+Stage 2 implements the Windows Bluetooth backend, supervised JSON-lines
+sidecar, native tray/window lifecycle, and capability-driven React controls.
+The IPC and renderer command contracts are documented in
+`../docs/windows-gui-protocol.md`.
 
 ## Prerequisites
 
 - Windows 10 or 11 with Evergreen WebView2
-- Node.js 22.12 or newer and npm
+- Node.js 22.12 or newer with Corepack
 - Rust 1.77.2 or newer with the MSVC Windows target
 - Python 3.8 or newer for backend development
 
 ## Commands
 
+From either the repository root or `desktop/`, start the complete desktop
+application with:
+
+```powershell
+pnpm dev
+```
+
 From `desktop/`:
 
 ```powershell
-npm install
-npm run dev
-npm test
-npm run build
-npm run tauri dev
-npm run tauri build
+pnpm install
+pnpm dev
+pnpm test
+pnpm build
+pnpm tauri build
 ```
+
+In development the Rust host launches `python -m pybmap.backend`. Set the fixed
+host-side `PYBMAP_PYTHON` environment variable when `python.exe` is not on PATH.
+The variable is read only by the native host and is never exposed to renderer
+commands. Release-sidecar freezing and installer wiring are Stage 4 work.
 
 From `python/`:
 

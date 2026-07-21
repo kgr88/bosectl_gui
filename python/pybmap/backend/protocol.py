@@ -1,10 +1,11 @@
 """Versioned newline-delimited JSON contract for the GUI sidecar."""
 
 import json
+import re
 from collections import namedtuple
 
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 MAX_LINE_BYTES = 64 * 1024
 MAX_REQUEST_ID_LENGTH = 128
 
@@ -20,8 +21,6 @@ METHODS = (
     "get_profiles",
     "set_profile",
     "delete_profile",
-    "enter_pairing",
-    "power_off",
     "shutdown",
 )
 
@@ -127,6 +126,8 @@ def _validate_target(target, request_id):
     elif kind == "manual":
         _strict_keys(target, ("kind", "address", "device_type"), (), request_id, "target")
         _nonempty_string(target["address"], "target.address", request_id, 64)
+        if not re.match(r"^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$", target["address"]):
+            _fail("target.address must be a Bluetooth MAC address", request_id)
         if target["device_type"] not in DEVICE_TYPES:
             _fail("target.device_type is not supported", request_id)
     else:
@@ -184,8 +185,21 @@ def validate_params(method, params, request_id):
         if params["key"] not in SETTING_KEYS:
             _fail("key is not a supported setting", request_id)
         value = params["value"]
-        if isinstance(value, (dict, list)) or value is None:
-            _fail("setting value must be a boolean, string, or number", request_id)
+        key = params["key"]
+        boolean_keys = ("voice_prompts", "multipoint", "auto_pause", "auto_answer", "wind_block", "anc_toggle")
+        if key in boolean_keys and not isinstance(value, bool):
+            _fail("%s must be a boolean" % key, request_id)
+        elif key == "sidetone" and value not in ("off", "low", "medium", "high"):
+            _fail("sidetone has an invalid value", request_id)
+        elif key == "spatial_audio" and value not in ("off", "room", "motion"):
+            _fail("spatial_audio has an invalid value", request_id)
+        elif key in ("voice_prompt_language", "button_action"):
+            _nonempty_string(value, "value", request_id, 128)
+        elif key == "routing" and (not isinstance(value, str) or not re.match(
+                r"^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$", value)):
+            _fail("routing must be a Bluetooth MAC address", request_id)
+        elif key == "source":
+            _fail("source is read-only", request_id)
     elif method == "get_profiles":
         _strict_keys(params, ("generation",), (), request_id)
         _generation(params, request_id)
@@ -197,9 +211,6 @@ def validate_params(method, params, request_id):
         _strict_keys(params, ("generation", "profile_id"), (), request_id)
         _generation(params, request_id)
         _nonempty_string(params["profile_id"], "profile_id", request_id)
-    elif method in ("enter_pairing", "power_off"):
-        _strict_keys(params, ("generation",), (), request_id)
-        _generation(params, request_id)
     else:
         _fail("unknown method: %s" % method, request_id, "UNKNOWN_METHOD")
     return params
