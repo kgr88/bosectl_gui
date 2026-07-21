@@ -197,7 +197,8 @@ Full protocol reference: **[NOTES.md](NOTES.md)**
 
 ### How We Found This
 
-1. Connected over RFCOMM, probed all channels — channel 2 (QC Ultra 2) and 8 (QC35) responded with BMAP
+1. Connected over RFCOMM and probed all channels — QC Ultra 2 firmware has
+   responded on channels 2 and 1, while QC35 responded on channel 8
 2. Captured Bluetooth HCI traffic while toggling settings in the Bose app
 3. DNS-hijacked the cloud API and noticed mode switching still worked — the app uses START, not SET
 4. Systematically tested every operator on every function block to map the auth boundary

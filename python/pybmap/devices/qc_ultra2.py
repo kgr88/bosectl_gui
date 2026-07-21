@@ -19,6 +19,10 @@ Auth notes:
 from . import parsers
 
 RFCOMM_CHANNEL = 2
+# Channel 2 is used by the original captured firmware. Current Windows firmware
+# has also been observed advertising BMAP on channel 1, so connection attempts
+# fall back without changing the established channel-2 default.
+RFCOMM_CHANNELS = (RFCOMM_CHANNEL, 1)
 
 # ── Device Identity ──────────────────────────────────────────────────────────
 

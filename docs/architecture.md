@@ -112,7 +112,7 @@ parser/builder function references, and capability flags.
 graph LR
     subgraph DeviceConfig
         INFO[Device Info<br/>name, codename, platform]
-        CHAN[RFCOMM Channel<br/>2 or 8]
+        CHAN[RFCOMM Channel<br/>1, 2, or 8]
         INIT[Init Packet<br/>optional]
         FEAT[Feature Map<br/>name → addr + parser + builder]
         MODES[Preset Modes<br/>name → index]
@@ -134,7 +134,7 @@ Each feature entry maps a name to its protocol address and codec functions:
 
 | Property | QC Ultra 2 | QC35 |
 |----------|-----------|------|
-| RFCOMM channel | 2 | 8 |
+| RFCOMM channel | 2, with channel 1 fallback on current firmware | 8 |
 | Init packet | None | GET [0.1] required |
 | Noise control | CNC [1.5] (0-10 slider) | ANR [1.6] (off/high/wind/low) |
 | EQ | 3-band [1.7] | Not supported |
@@ -368,7 +368,7 @@ implemented.
 To add support for a new Bose device:
 
 1. **Add to the catalog** — add its PID, codename, and name with `config=None`
-2. **Discover the RFCOMM channel** — try channels 2 and 8
+2. **Discover the RFCOMM channel** — try channels 1, 2, and 8
 3. **Check if an init packet is needed** — send GET [0.1] and see if subsequent commands work
 4. **Probe features** — GET on known function addresses to see what responds
 5. **Create a device config** with the discovered addresses and parsers

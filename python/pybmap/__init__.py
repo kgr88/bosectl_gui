@@ -65,10 +65,21 @@ def connect(mac=None, device_type=None, transport_factory=None):
         )
 
     device = get_device(device_type)
-    channel = getattr(device, "RFCOMM_CHANNEL", 2)
+    channels = getattr(
+        device, "RFCOMM_CHANNELS", (getattr(device, "RFCOMM_CHANNEL", 2),)
+    )
     transport_factory = transport_factory or RfcommTransport
-    transport = transport_factory(mac, channel=channel)
-    transport.connect()
+    last_error = None
+    for channel in channels:
+        transport = transport_factory(mac, channel=channel)
+        try:
+            transport.connect()
+            break
+        except BmapConnectionError as exc:
+            last_error = exc
+            transport.close()
+    else:
+        raise last_error
 
     # Some devices require an init packet before responding.
     init = getattr(device, "INIT_PACKET", None)
