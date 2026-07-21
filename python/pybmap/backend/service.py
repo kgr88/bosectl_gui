@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 import pybmap
 from pybmap import __version__
-from pybmap.constants import VOICE_LANGUAGES
 from pybmap.discovery import BluetoothDiscoveryError, discover_devices
 from pybmap.errors import (
     BmapConnectionError, BmapError, BmapNotFoundError, BmapTimeoutError,
@@ -169,28 +168,18 @@ class BackendService(object):
         key, value = params["key"], params["value"]
         setters = {
             "sidetone": connection.set_sidetone,
-            "voice_prompts": connection.set_prompts,
-            "voice_prompt_language": connection.set_prompt_language,
-            "multipoint": connection.set_multipoint,
             "auto_pause": connection.set_auto_pause,
-            "auto_answer": connection.set_auto_answer,
             "spatial_audio": lambda item: connection.set_spatial(
                 "head" if item == "motion" else item
             ),
             "wind_block": connection.set_wind,
             "anc_toggle": connection.set_anc,
-            "button_action": self._set_button_action,
-            "routing": connection.route,
         }
         setter = setters.get(key)
         if setter is None:
             raise ProtocolError("UNSUPPORTED_OPERATION", "Setting is read-only or unsupported")
         setter(value)
         return self._refresh_snapshot()
-
-    def _set_button_action(self, action):
-        mapping = self.connection.buttons()
-        self.connection.set_buttons(mapping.button_id, mapping.event, action)
 
     def _handle_get_profiles(self, params):
         self._require_generation(params["generation"])
@@ -273,17 +262,8 @@ class BackendService(object):
         if connection.has_feature("sidetone"):
             settings_caps.append(_choice_setting("sidetone", "Sidetone", ("off", "low", "medium", "high")))
             settings["sidetone"] = connection.sidetone()
-        if connection.has_feature("voice_prompts"):
-            enabled, language = connection.prompts()
-            settings_caps.extend([
-                _toggle_setting("voice_prompts", "Voice prompts"),
-                _choice_setting("voice_prompt_language", "Prompt language", tuple(VOICE_LANGUAGES.values())),
-            ])
-            settings["voice_prompts"], settings["voice_prompt_language"] = enabled, language
         for feature, key, label, reader_name in (
-            ("multipoint", "multipoint", "Multipoint", "multipoint"),
             ("auto_pause", "auto_pause", "Auto play/pause", "auto_pause"),
-            ("auto_answer", "auto_answer", "Auto-answer calls", "auto_answer"),
         ):
             if connection.has_feature(feature):
                 settings_caps.append(_toggle_setting(key, label))
@@ -318,21 +298,6 @@ class BackendService(object):
                 band_id = band.name.lower()
                 eq_caps.append(EqBandCapability(band_id, band.name, band.min_val, band.max_val, 1))
                 eq_values[band_id] = band.current
-        if connection.has_feature("buttons"):
-            mapping = connection.buttons()
-            options = tuple(mapping.supported_actions) or (mapping.action_name,)
-            settings_caps.append(_choice_setting("button_action", "Button action", options))
-            settings["button_action"] = mapping.action_name
-        if connection.has_feature("source"):
-            source = connection.source()
-            settings_caps.append(SettingCapability(
-                "source", "Audio source", "text", False, [], None, None, None,
-            ))
-            settings["source"] = source.source_type
-        if connection.has_feature("routing"):
-            settings_caps.append(SettingCapability(
-                "routing", "Route Bluetooth audio", "text", True, [], None, None, None,
-            ))
         profiles = None
         if connection.has_feature("get_all_modes"):
             profiles = ProfileCapability(len(connection.editable_profile_slots), True)

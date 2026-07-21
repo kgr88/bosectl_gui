@@ -1,4 +1,4 @@
-# Windows GUI protocol v1
+# Windows GUI protocol v3
 
 This document is the Stage 1 contract shared by the Python sidecar, Tauri host,
 and React renderer. The small language-specific definitions are intentionally
@@ -9,7 +9,7 @@ maintained by hand in:
 - `desktop/src/contracts.ts`
 
 Changing a field, operation, event, or error code requires updating all three
-definitions and their focused tests. Additive changes remain protocol v1;
+definitions and their focused tests. Additive changes remain protocol v3;
 incompatible changes require a new version and handshake support.
 
 ## Framing and envelopes
@@ -21,21 +21,21 @@ stdout contains protocol messages only.
 Every request has exactly these fields:
 
 ```json
-{"v":1,"id":"42","method":"get_snapshot","params":{}}
+{"v":3,"id":"42","method":"get_snapshot","params":{}}
 ```
 
 `id` is an opaque non-empty string of at most 128 characters. A response has
 exactly one of `result` or `error`:
 
 ```json
-{"v":1,"id":"42","result":{"ok":true}}
-{"v":1,"id":"42","error":{"code":"DEVICE_TIMEOUT","message":"The headset did not respond","retryable":true}}
+{"v":3,"id":"42","result":{"ok":true}}
+{"v":3,"id":"42","error":{"code":"DEVICE_TIMEOUT","message":"The headset did not respond","retryable":true}}
 ```
 
 Unsolicited events do not have an ID:
 
 ```json
-{"v":1,"event":"connection_changed","data":{"state":"disconnected","generation":4,"revision":0,"reason":"device_lost"}}
+{"v":3,"event":"connection_changed","data":{"state":"disconnected","generation":4,"revision":0,"reason":"device_lost"}}
 ```
 
 The Tauri host emits sanitized events to the renderer as `bose://device-event`.
@@ -88,17 +88,17 @@ Noise-control capability kind is `cnc`, `anr`, or `mode`. The renderer chooses a
 range or option control from that reported kind and never from identity/model
 text. EQ and settings are likewise rendered only from their capability arrays.
 
-Setting keys in v1 are `sidetone`, `voice_prompts`, `voice_prompt_language`,
-`multipoint`, `auto_pause`, `auto_answer`, `spatial_audio`, `wind_block`,
-`anc_toggle`, `button_action`, `source`, and `routing`. Their values are scalar
-booleans, strings, or numbers and must also satisfy the matching capability at
-runtime.
+Setting keys in v3 are `sidetone`, `auto_pause`, `spatial_audio`, `wind_block`,
+and `anc_toggle`. Their values are scalar booleans or strings and must also
+satisfy the matching capability at runtime. Voice prompts, prompt language,
+multipoint, auto-answer calls, button mapping, audio source, and Bluetooth audio
+routing are deliberately absent and rejected at the protocol boundary.
 
 ## Events and stable errors
 
 Events are `snapshot_changed`, `connection_changed`, and `backend_error`.
 
-Stable v1 error codes are:
+Stable v3 error codes are:
 
 ```text
 INVALID_REQUEST REQUEST_TOO_LARGE UNSUPPORTED_PROTOCOL UNKNOWN_METHOD

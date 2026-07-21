@@ -29,11 +29,10 @@ function connected(kind: "qc_ultra2" | "qc35", generation: number): DeviceSnapsh
       equalizer: [],
       settings: [
         { key: "sidetone", label: "Sidetone", kind: "choice", writable: true, options: ["off", "low", "medium", "high"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })), minimum: null, maximum: null, step: null },
-        { key: "voice_prompts", label: "Voice prompts", kind: "toggle", writable: true, options: [], minimum: null, maximum: null, step: null },
       ],
       profiles: null,
     },
-    values: { noise_control: { kind: "anr", value: "high" }, eq: {}, settings: { sidetone: "medium", voice_prompts: true }, profile_id: null },
+    values: { noise_control: { kind: "anr", value: "high" }, eq: {}, settings: { sidetone: "medium" }, profile_id: null },
     generation, revision: 1,
   };
   const band = (id: string, label: string) => ({ id, label, minimum: -10, maximum: 10, step: 1 });
@@ -46,14 +45,12 @@ function connected(kind: "qc_ultra2" | "qc35", generation: number): DeviceSnapsh
       equalizer: [band("bass", "Bass"), band("mid", "Mid"), band("treble", "Treble")],
       settings: [
         { key: "sidetone", label: "Sidetone", kind: "choice", writable: true, options: ["off", "low", "medium", "high"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })), minimum: null, maximum: null, step: null },
-        { key: "voice_prompts", label: "Voice prompts", kind: "toggle", writable: true, options: [], minimum: null, maximum: null, step: null },
-        { key: "multipoint", label: "Multipoint", kind: "toggle", writable: true, options: [], minimum: null, maximum: null, step: null },
         { key: "spatial_audio", label: "Spatial audio", kind: "choice", writable: true, options: ["off", "room", "motion"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })), minimum: null, maximum: null, step: null },
         { key: "wind_block", label: "Wind block", kind: "toggle", writable: true, options: [], minimum: null, maximum: null, step: null },
       ],
       profiles: { maximum: 7, supports_delete: true },
     },
-    values: { noise_control: { kind: "cnc", value: 7 }, eq: { bass: 3, mid: 0, treble: -2 }, settings: { sidetone: "medium", voice_prompts: true, multipoint: true, spatial_audio: "motion", wind_block: false }, profile_id: "0" },
+    values: { noise_control: { kind: "cnc", value: 7 }, eq: { bass: 3, mid: 0, treble: -2 }, settings: { sidetone: "medium", spatial_audio: "motion", wind_block: false }, profile_id: "0" },
     generation, revision: 1,
   };
 }
@@ -73,7 +70,7 @@ export function createMockApi(): BoseApi {
   const targetType = (target: ConnectionTarget) => target.kind === "manual" ? target.device_type : target.device_id.includes("qc35") ? "qc35" : "qc_ultra2";
 
   return {
-    async backendInfo() { return { backend_version: "development-mock", python_version: "development", protocol_version: 1, operations: [] }; },
+    async backendInfo() { return { backend_version: "development-mock", python_version: "development", protocol_version: 3, operations: [] }; },
     async discover() { return [
       { device_id: "mock-qc-ultra2", address: "AA:BB:CC:02:00:01", name: "QuietComfort Ultra 2", product_id: 0x4082, device_type: "qc_ultra2", rfcomm_channel: 2, paired: true, supported: true },
       { device_id: "mock-qc35", address: "AA:BB:CC:35:00:01", name: "QuietComfort 35 II", product_id: 0x4020, device_type: "qc35", rfcomm_channel: 8, paired: true, supported: true },

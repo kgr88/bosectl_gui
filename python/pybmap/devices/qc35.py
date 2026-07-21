@@ -47,6 +47,7 @@ FEATURES = {
         "addr": (1, 3),
         "parser": parsers.parse_voice_prompts,
         "builder": parsers.build_voice_prompts,
+        "enabled_mask": 0x20,
     },
     "sidetone": {
         "addr": (1, 11),

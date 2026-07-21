@@ -7,9 +7,6 @@ from pybmap.backend.service import BackendService
 from pybmap.discovery import _detect_device_type, _device_from_name
 
 
-Button = namedtuple(
-    "Button", ["button_id", "event", "action_name", "supported_actions"]
-)
 EqBand = namedtuple("EqBand", ["name", "min_val", "max_val", "current"])
 Audio = namedtuple("Audio", ["cnc_level", "auto_cnc", "spatial", "wind_block", "anc_toggle"])
 Mode = namedtuple("Mode", ["mode_idx", "name", "editable", "configured", "cnc_level", "auto_cnc", "spatial", "wind_block", "anc_toggle"])
@@ -24,7 +21,7 @@ class FakeConnection:
         self.sidetone_value = "medium"
 
     def has_feature(self, name):
-        return name in {"battery", "firmware", "product_name", "anr", "sidetone", "pairing", "buttons"}
+        return name in {"battery", "firmware", "product_name", "anr", "sidetone", "pairing"}
 
     def battery(self): return 72
     def firmware(self): return "4.8.1"
@@ -33,8 +30,6 @@ class FakeConnection:
     def set_anr(self, value): self.anr_value = value
     def sidetone(self): return self.sidetone_value
     def set_sidetone(self, value): self.sidetone_value = value
-    def buttons(self): return Button(1, 2, "ANC", ("ANC", "VPA"))
-    def set_buttons(self, button, event, action): pass
     def pair(self): pass
     def close(self): self.closed = True
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDeviceSnapshot, PROTOCOL_VERSION } from "./contracts";
+import { isDeviceSnapshot } from "./contracts";
 
 const snapshot = {
   identity: null,
@@ -18,7 +18,6 @@ const snapshot = {
 };
 
 describe("renderer boundary contracts", () => {
-  it("keeps protocol v2 frozen", () => expect(PROTOCOL_VERSION).toBe(2));
   it("accepts a capability-driven disconnected snapshot", () => expect(isDeviceSnapshot(snapshot)).toBe(true));
   it("rejects a snapshot without monotonic version fields", () => {
     expect(isDeviceSnapshot({ ...snapshot, revision: -1 })).toBe(false);

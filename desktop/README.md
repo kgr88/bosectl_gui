@@ -44,8 +44,13 @@ python -m pybmap.backend
 ```
 
 To smoke-test the sidecar, write one compact JSON request per line. Start with
-`{"v":1,"id":"1","method":"hello","params":{}}` and finish with
-`{"v":1,"id":"2","method":"shutdown","params":{}}`.
+`{"v":3,"id":"1","method":"hello","params":{}}` and finish with
+`{"v":3,"id":"2","method":"shutdown","params":{}}`.
+
+The desktop setting contract includes sidetone, auto play/pause, spatial audio,
+wind block, and ANC toggle. It intentionally excludes voice prompts, prompt
+language, multipoint, auto-answer calls, button mapping, audio source, and
+Bluetooth audio routing.
 
 The renderer imports native APIs only through `src/api.ts`. Do not add shell,
 filesystem, path, process, or arbitrary event capabilities. The Rust host accepts

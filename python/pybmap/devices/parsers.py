@@ -169,6 +169,13 @@ def parse_voice_prompts(payload):
     return (False, 0)
 
 
+def parse_voice_prompts_ultra(payload):
+    """Parse the newer Ultra voice-prompt record (bit 6 = enabled)."""
+    if payload:
+        return (bool(payload[0] & 0x40), payload[0] & 0x1F)
+    return (False, 0)
+
+
 ANR_NAMES = {0: "off", 1: "high", 2: "wind", 3: "low"}
 ANR_VALUES = {"off": 0, "high": 1, "wind": 2, "low": 3}
 
@@ -210,9 +217,15 @@ def build_sidetone(level):
     return bytes([1, level])
 
 
-def build_voice_prompts(enabled, language_id):
-    """Build voice prompts SETGET payload."""
-    byte0 = ((1 if enabled else 0) << 5) | (language_id & 0x1F)
+def build_voice_prompts(enabled, language_id, current_byte=0):
+    """Build voice prompts SETGET payload, preserving device flag bits."""
+    byte0 = (current_byte & 0xC0) | ((1 if enabled else 0) << 5) | (language_id & 0x1F)
+    return bytes([byte0])
+
+
+def build_voice_prompts_ultra(enabled, language_id, current_byte=0):
+    """Build the first byte of a newer Ultra voice-prompt record."""
+    byte0 = ((1 if enabled else 0) << 6) | (language_id & 0x1F)
     return bytes([byte0])
 
 

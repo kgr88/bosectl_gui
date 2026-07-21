@@ -376,8 +376,8 @@ mod tests {
             pending.insert("first".into(), first_sender);
             pending.insert("second".into(), second_sender);
         }
-        let output = br#"{"v":2,"id":"second","result":{"value":2}}
-{"v":2,"id":"first","result":{"value":1}}
+        let output = br#"{"v":3,"id":"second","result":{"value":2}}
+{"v":3,"id":"first","result":{"value":1}}
 "#;
         read_backend(client.inner.clone(), output.as_slice());
         assert_eq!(first_receiver.recv().unwrap().unwrap()["value"], 1);

@@ -3,9 +3,9 @@
 import pytest
 from pybmap.connection import BmapConnection
 from pybmap.protocol import bmap_packet
-from pybmap.constants import OP_GET, OP_STATUS, OP_RESULT, OP_ERROR
+from pybmap.constants import OP_GET, OP_SETGET, OP_STATUS, OP_RESULT, OP_ERROR
 from pybmap.errors import BmapError, BmapAuthError, BmapDeviceError
-from pybmap.devices import qc_ultra2
+from pybmap.devices import qc35, qc_ultra2
 
 
 class MockTransport:
@@ -48,7 +48,7 @@ def mock_dev():
     transport.add_response(1, 11, OP_STATUS, bytes([0x01, 0x02, 0x0f]))  # sidetone medium
     transport.add_response(1, 24, OP_STATUS, bytes([0x01]))  # auto_pause on
     transport.add_response(1, 27, OP_STATUS, bytes([0x01]))  # auto_answer on
-    transport.add_response(1, 3, OP_STATUS, bytes([0x21, 0, 0, 0x81, 2, 0, 0]))  # prompts on, US English
+    transport.add_response(1, 3, OP_STATUS, bytes([0x41, 0, 0, 0x81, 2, 0, 0]))  # prompts on, US English
     transport.add_response(31, 3, OP_STATUS, bytes([0x00]))  # current mode: quiet (idx 0)
     transport.add_response(1, 9, OP_STATUS, bytes.fromhex("80090e00094002"))  # buttons
     return BmapConnection(transport, qc_ultra2)
@@ -93,6 +93,23 @@ class TestReadOperations:
         enabled, lang = mock_dev.prompts()
         assert enabled is True
         assert lang == "US English"
+
+    def test_ultra_prompt_settings_are_read_only(self, mock_dev):
+        assert mock_dev.feature_writable("voice_prompts") is False
+        with pytest.raises(BmapError, match="read-only"):
+            mock_dev.set_prompts(False)
+        with pytest.raises(BmapError, match="read-only"):
+            mock_dev.set_prompt_language("French")
+
+    def test_qc35_prompt_write_remains_one_byte(self):
+        transport = MockTransport()
+        transport.add_response(1, 3, OP_STATUS, bytes([0x21, 0, 0, 0xDE]))
+        device = BmapConnection(transport, qc35)
+
+        assert device.feature_writable("voice_prompts") is True
+        device.set_prompt_language("French")
+
+        assert transport.sent[-1] == bmap_packet(1, 3, OP_SETGET, bytes([0x22]))
 
     def test_mode(self, mock_dev):
         assert mock_dev.mode() == "quiet"

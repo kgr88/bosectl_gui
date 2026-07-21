@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 2 as const;
+export const PROTOCOL_VERSION = 3 as const;
 
 export type ConnectionState =
   | "disconnected"
@@ -13,17 +13,14 @@ export type NoiseControlKind = "cnc" | "anr" | "mode";
 
 export type SettingKey =
   | "sidetone"
-  | "voice_prompts"
-  | "voice_prompt_language"
-  | "multipoint"
   | "auto_pause"
-  | "auto_answer"
   | "spatial_audio"
   | "wind_block"
-  | "anc_toggle"
-  | "button_action"
-  | "source"
-  | "routing";
+  | "anc_toggle";
+
+const SETTING_KEYS: SettingKey[] = [
+  "sidetone", "auto_pause", "spatial_audio", "wind_block", "anc_toggle",
+];
 
 export type ErrorCode =
   | "INVALID_REQUEST"
@@ -252,12 +249,17 @@ function hasOnlyScalarValues(value: unknown): value is Record<string, SettingVal
   return isObject(value) && Object.values(value).every(isScalar);
 }
 
+function hasOnlySettingValues(value: unknown): value is Partial<Record<SettingKey, SettingValue>> {
+  return isObject(value) && Object.entries(value).every(([key, item]) =>
+    SETTING_KEYS.includes(key as SettingKey) && isScalar(item));
+}
+
 function isChoice(value: unknown): value is Choice {
   return isObject(value) && typeof value.value === "string" && typeof value.label === "string";
 }
 
 function isSettingCapability(value: unknown): value is SettingCapability {
-  return isObject(value) && typeof value.key === "string"
+  return isObject(value) && SETTING_KEYS.includes(String(value.key) as SettingKey)
     && ["toggle", "choice", "range", "text"].includes(String(value.kind))
     && typeof value.label === "string" && typeof value.writable === "boolean"
     && Array.isArray(value.options) && value.options.every(isChoice)
@@ -310,7 +312,7 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
       && typeof band.id === "string" && typeof band.label === "string")) return false;
   if (!value.capabilities.settings.every(isSettingCapability)) return false;
   if (!isObject(value.values) || !hasOnlyScalarValues(value.values.eq)
-      || !hasOnlyScalarValues(value.values.settings) || !isNullableString(value.values.profile_id)) {
+      || !hasOnlySettingValues(value.values.settings) || !isNullableString(value.values.profile_id)) {
     return false;
   }
   const noiseValue = value.values.noise_control;

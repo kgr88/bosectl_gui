@@ -5,7 +5,7 @@ import re
 from collections import namedtuple
 
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 MAX_LINE_BYTES = 64 * 1024
 MAX_REQUEST_ID_LENGTH = 128
 
@@ -56,17 +56,10 @@ DEVICE_TYPES = ("qc_ultra2", "qc35")
 NOISE_CONTROL_KINDS = ("cnc", "anr", "mode")
 SETTING_KEYS = (
     "sidetone",
-    "voice_prompts",
-    "voice_prompt_language",
-    "multipoint",
     "auto_pause",
-    "auto_answer",
     "spatial_audio",
     "wind_block",
     "anc_toggle",
-    "button_action",
-    "source",
-    "routing",
 )
 
 Request = namedtuple("Request", ["request_id", "method", "params"])
@@ -186,20 +179,13 @@ def validate_params(method, params, request_id):
             _fail("key is not a supported setting", request_id)
         value = params["value"]
         key = params["key"]
-        boolean_keys = ("voice_prompts", "multipoint", "auto_pause", "auto_answer", "wind_block", "anc_toggle")
+        boolean_keys = ("auto_pause", "wind_block", "anc_toggle")
         if key in boolean_keys and not isinstance(value, bool):
             _fail("%s must be a boolean" % key, request_id)
         elif key == "sidetone" and value not in ("off", "low", "medium", "high"):
             _fail("sidetone has an invalid value", request_id)
         elif key == "spatial_audio" and value not in ("off", "room", "motion"):
             _fail("spatial_audio has an invalid value", request_id)
-        elif key in ("voice_prompt_language", "button_action"):
-            _nonempty_string(value, "value", request_id, 128)
-        elif key == "routing" and (not isinstance(value, str) or not re.match(
-                r"^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$", value)):
-            _fail("routing must be a Bluetooth MAC address", request_id)
-        elif key == "source":
-            _fail("source is read-only", request_id)
     elif method == "get_profiles":
         _strict_keys(params, ("generation",), (), request_id)
         _generation(params, request_id)

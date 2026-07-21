@@ -4,8 +4,10 @@ from pybmap.devices.parsers import (
     parse_battery, parse_firmware, parse_product_name, parse_cnc,
     parse_eq, parse_buttons, parse_multipoint, parse_bool,
     parse_sidetone, parse_voice_prompts,
+    parse_voice_prompts_ultra,
     parse_mode_config_48, build_mode_config_40,
     build_eq_band, build_toggle, build_sidetone, build_voice_prompts,
+    build_voice_prompts_ultra,
     build_buttons,
 )
 from pybmap.types import ModeConfig, EqBand, ButtonMapping
@@ -185,18 +187,15 @@ class TestParseSidetone:
 class TestParseVoicePrompts:
     def test_from_capture(self):
         # "1.3": "41000081020000"
-        # Byte 0: 0x41 = 0b01000001 → bit6=1, bit5=0, bits4-0=0x01 (US English)
-        # Voice prompts enabled flag is at bit 5 per the original RE.
-        # 0x41 has bit 6 set but not bit 5, suggesting prompts were off
-        # at capture time (bit 6 may be a different flag).
+        # Byte 0: bit6 is a separate device flag, bit5 is the enabled flag.
         payload = bytes.fromhex("41000081020000")
         enabled, lang = parse_voice_prompts(payload)
-        assert enabled is False  # bit 5 not set in 0x41
+        assert enabled is False
         assert lang == 1  # US English
 
     def test_enabled(self):
-        # 0x21 = 0b00100001 → bit5=1 (enabled), lang=1 (US English)
-        payload = bytes([0x21])
+        # 0x61 preserves bit6 and sets bit5, with lang=1 (US English).
+        payload = bytes([0x61])
         enabled, lang = parse_voice_prompts(payload)
         assert enabled is True
         assert lang == 1
@@ -204,6 +203,13 @@ class TestParseVoicePrompts:
     def test_disabled(self):
         enabled, lang = parse_voice_prompts(bytes([0x01]))
         assert enabled is False
+        assert lang == 1
+
+    def test_ultra_capture_uses_bit_six(self):
+        enabled, lang = parse_voice_prompts_ultra(
+            bytes.fromhex("41000081020000")
+        )
+        assert enabled is True
         assert lang == 1
 
 
@@ -282,6 +288,18 @@ class TestBuilders:
     def test_voice_prompts_on(self):
         payload = build_voice_prompts(True, 1)  # US English, on
         assert payload == bytes([0x21])  # bit5=1, lang=1
+
+    def test_voice_prompts_on_preserves_device_flags(self):
+        assert build_voice_prompts(True, 1, 0x41) == bytes([0x61])
+
+    def test_voice_prompt_language_preserves_device_flags_and_enabled(self):
+        assert build_voice_prompts(True, 2, 0x61) == bytes([0x62])
+
+    def test_ultra_voice_prompts_off(self):
+        assert build_voice_prompts_ultra(False, 1, 0x41) == bytes([0x01])
+
+    def test_ultra_voice_prompts_on(self):
+        assert build_voice_prompts_ultra(True, 1, 0x01) == bytes([0x41])
 
     def test_voice_prompts_off(self):
         payload = build_voice_prompts(False, 1)  # US English, off

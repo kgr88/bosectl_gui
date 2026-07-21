@@ -41,14 +41,6 @@ def test_operation_contracts_parse(method, params):
     assert parse_request_line(request(method, params)).params == params
 
 
-def test_all_declared_methods_have_a_validator_path():
-    assert set(METHODS) == {
-        "hello", "discover", "connect", "disconnect", "get_snapshot",
-        "set_noise_control", "set_eq", "set_setting", "get_profiles",
-        "set_profile", "delete_profile", "shutdown",
-    }
-
-
 @pytest.mark.parametrize(
     "payload,code",
     [

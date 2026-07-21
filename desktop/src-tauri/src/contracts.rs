@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-pub const PROTOCOL_VERSION: u8 = 2;
+pub const PROTOCOL_VERSION: u8 = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -24,21 +24,14 @@ pub enum NoiseControlKind {
     Mode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum SettingKey {
     Sidetone,
-    VoicePrompts,
-    VoicePromptLanguage,
-    Multipoint,
     AutoPause,
-    AutoAnswer,
     SpatialAudio,
     WindBlock,
     AncToggle,
-    ButtonAction,
-    Source,
-    Routing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -218,7 +211,7 @@ pub struct NoiseControlValue {
 pub struct DeviceValues {
     pub noise_control: Option<NoiseControlValue>,
     pub eq: BTreeMap<String, i16>,
-    pub settings: BTreeMap<String, Value>,
+    pub settings: BTreeMap<SettingKey, Value>,
     pub profile_id: Option<String>,
 }
 
@@ -345,13 +338,9 @@ pub struct SetSettingRequest {
 impl SetSettingRequest {
     pub fn validate(&self) -> Result<(), ApiError> {
         let valid = match self.key {
-            SettingKey::VoicePrompts | SettingKey::Multipoint | SettingKey::AutoPause
-            | SettingKey::AutoAnswer | SettingKey::WindBlock | SettingKey::AncToggle => self.value.is_boolean(),
+            SettingKey::AutoPause | SettingKey::WindBlock | SettingKey::AncToggle => self.value.is_boolean(),
             SettingKey::Sidetone => matches!(self.value.as_str(), Some("off" | "low" | "medium" | "high")),
             SettingKey::SpatialAudio => matches!(self.value.as_str(), Some("off" | "room" | "motion")),
-            SettingKey::VoicePromptLanguage | SettingKey::ButtonAction => self.value.as_str().is_some_and(|value| valid_text(value, 128)),
-            SettingKey::Routing => self.value.as_str().is_some_and(valid_bluetooth_address),
-            SettingKey::Source => false,
         };
         if valid {
             Ok(())
@@ -534,8 +523,4 @@ mod tests {
         assert!(request.validate().is_err());
     }
 
-    #[test]
-    fn protocol_version_is_frozen() {
-        assert_eq!(PROTOCOL_VERSION, 2);
-    }
 }

@@ -54,8 +54,9 @@ FEATURES = {
     },
     "voice_prompts": {
         "addr": (1, 3),
-        "parser": parsers.parse_voice_prompts,
-        "builder": parsers.build_voice_prompts,
+        "parser": parsers.parse_voice_prompts_ultra,
+        "enabled_mask": 0x40,
+        "writable": False,
     },
     "cnc": {
         "addr": (1, 5),

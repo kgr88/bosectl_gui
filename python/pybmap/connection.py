@@ -51,17 +51,23 @@ class BmapConnection:
 
     def _get(self, feature_name):
         """Send a GET request and return the parsed payload."""
+        payload = self._get_payload(feature_name)
+        feat = self._feature(feature_name)
+        parser = feat.get("parser")
+        if parser:
+            return parser(payload)
+        return payload
+
+    def _get_payload(self, feature_name):
+        """Send a GET request and return the unparsed payload."""
         feat = self._feature(feature_name)
         fblock, func = feat["addr"]
         resp = self._transport.send_recv(bmap_packet(fblock, func, OP_GET))
         parsed = parse_response(resp)
         if parsed is None:
-            return None
+            return bytes()
         if parsed.op == OP_ERROR:
             self._raise_error(parsed)
-        parser = feat.get("parser")
-        if parser:
-            return parser(parsed.payload)
         return parsed.payload
 
     def _setget(self, feature_name, payload):
@@ -386,20 +392,22 @@ class BmapConnection:
 
     def set_prompts(self, enabled):
         """Toggle voice prompts. Preserves current language setting."""
-        current_enabled, lang_name = self.prompts()
-        # Recover language ID from name
-        lang_id = 0
-        for lid, lname in VOICE_LANGUAGES.items():
-            if lname == lang_name:
-                lang_id = lid
-                break
-        feat = self._feature("voice_prompts")
-        builder = feat.get("builder")
-        self._setget("voice_prompts", builder(enabled, lang_id))
+        if not self.feature_writable("voice_prompts"):
+            raise BmapError("Voice prompt settings are read-only on this device")
+        current = self._get_payload("voice_prompts")
+        current_byte = current[0] if current else 0
+        lang_id = current_byte & 0x1F
+        payload = self._build_voice_prompt_payload(enabled, lang_id, current)
+        self._setget("voice_prompts", payload)
 
     def set_prompt_language(self, language):
         """Set the prompt language while preserving the enabled state."""
-        enabled, _ = self.prompts()
+        if not self.feature_writable("voice_prompts"):
+            raise BmapError("Voice prompt settings are read-only on this device")
+        current = self._get_payload("voice_prompts")
+        current_byte = current[0] if current else 0
+        feat = self._feature("voice_prompts")
+        enabled = bool(current_byte & feat.get("enabled_mask", 0x20))
         language_id = None
         for candidate_id, candidate_name in VOICE_LANGUAGES.items():
             if candidate_name.lower() == language.lower():
@@ -407,8 +415,15 @@ class BmapConnection:
                 break
         if language_id is None:
             raise ValueError("Unknown voice prompt language")
-        builder = self._feature("voice_prompts").get("builder")
-        self._setget("voice_prompts", builder(enabled, language_id))
+        payload = self._build_voice_prompt_payload(enabled, language_id, current)
+        self._setget("voice_prompts", payload)
+
+    def _build_voice_prompt_payload(self, enabled, language_id, current):
+        """Build the device-specific [1.3] write shape from its current record."""
+        feat = self._feature("voice_prompts")
+        current_byte = current[0] if current else 0
+        first_byte = feat["builder"](enabled, language_id, current_byte)
+        return first_byte
 
     def power_off(self):
         """Power off the device."""
@@ -569,6 +584,11 @@ class BmapConnection:
     def has_feature(self, name):
         """Check if the connected device supports a feature."""
         return name in self._device.FEATURES
+
+    def feature_writable(self, name):
+        """Return whether a feature has a verified write operation."""
+        feature = self._feature(name)
+        return feature.get("writable", feature.get("builder") is not None)
 
     # ── Internal Helpers ─────────────────────────────────────────────────────
 

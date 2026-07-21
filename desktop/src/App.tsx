@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { api } from "./api";
-import { isApiError, type ApiError, type ConnectionTarget, type DeviceSnapshot, type DiscoveredDevice } from "./contracts";
+import { isApiError, PROTOCOL_VERSION, type ApiError, type ConnectionTarget, type DeviceSnapshot, type DiscoveredDevice } from "./contracts";
 import { StatusPill } from "./components/StatusPill";
 import { ConnectionPage } from "./pages/ConnectionPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
@@ -133,6 +133,6 @@ export default function App() {
       {page === "settings" && <SettingsPage snapshot={snapshot} onSnapshot={acceptSnapshot} onError={reportError} />}
       {page === "diagnostics" && <DiagnosticsPage snapshot={snapshot} busy={busy} onRefresh={() => void refresh()} onDisconnect={() => void disconnect()} />}
     </>}
-    <footer>Protocol v2 · controls are rendered from reported capabilities</footer>
+    <footer>Protocol v{PROTOCOL_VERSION} · controls are rendered from reported capabilities</footer>
   </main>;
 }
