@@ -10,6 +10,7 @@ pub struct AppState {
     pub backend: BackendClient,
     generation: AtomicU64,
     revision: AtomicU64,
+    connection_attempt: AtomicU64,
     pub quitting: AtomicBool,
     pub shutdown_complete: AtomicBool,
     pub _single_instance: SingleInstanceGuard,
@@ -38,6 +39,31 @@ mod tests {
         assert_eq!(state.accept_snapshot(snapshot(2, 3)).unwrap_err().code, ErrorCode::StaleGeneration);
         assert!(state.accept_snapshot(snapshot(3, 0)).is_ok());
     }
+
+    #[test]
+    fn connection_attempt_starts_a_new_backend_ordering_epoch() {
+        let state = AppState::new(SingleInstanceGuard::for_test());
+        state.accept_snapshot(snapshot(7, 40)).unwrap();
+
+        let attempt = state.begin_connection();
+        assert!(state
+            .accept_connection_snapshot(snapshot(1, 2), attempt)
+            .is_ok());
+        assert!(state.accept_snapshot(snapshot(1, 3)).is_ok());
+
+        let superseded = state.begin_connection();
+        let current = state.begin_connection();
+        assert_eq!(
+            state
+                .accept_connection_snapshot(snapshot(2, 1), superseded)
+                .unwrap_err()
+                .code,
+            ErrorCode::StaleGeneration
+        );
+        assert!(state
+            .accept_connection_snapshot(snapshot(3, 1), current)
+            .is_ok());
+    }
 }
 
 impl AppState {
@@ -46,10 +72,36 @@ impl AppState {
             backend: BackendClient::default(),
             generation: AtomicU64::new(0),
             revision: AtomicU64::new(0),
+            connection_attempt: AtomicU64::new(0),
             quitting: AtomicBool::new(false),
             shutdown_complete: AtomicBool::new(false),
             _single_instance: single_instance,
         }
+    }
+
+    pub fn begin_connection(&self) -> u64 {
+        self.connection_attempt.fetch_add(1, Ordering::AcqRel) + 1
+    }
+
+    pub fn accept_connection_snapshot(
+        &self,
+        snapshot: DeviceSnapshot,
+        attempt: u64,
+    ) -> Result<DeviceSnapshot, ApiError> {
+        snapshot.validate_wire()?;
+        if attempt != self.connection_attempt.load(Ordering::Acquire) {
+            return Err(ApiError::new(
+                ErrorCode::StaleGeneration,
+                "A newer connection attempt has replaced this one",
+                false,
+            ));
+        }
+        // A stopped sidecar starts its generation and revision counters over.
+        // A successful connect establishes a new ordering epoch, so its first
+        // snapshot must not be compared with the previous sidecar's counters.
+        self.generation.store(snapshot.generation, Ordering::Release);
+        self.revision.store(snapshot.revision, Ordering::Release);
+        Ok(snapshot)
     }
 
     pub fn validate_generation(&self, generation: u64) -> Result<(), ApiError> {

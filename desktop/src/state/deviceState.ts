@@ -8,13 +8,16 @@ export interface DeviceState {
 
 export const initialDeviceState: DeviceState = { snapshot: null, error: null, connection: "disconnected" };
 
+export type DeviceStateEvent = DeviceEvent | { event: "session_reset" };
+
 export function isNewer(current: DeviceSnapshot | null, next: DeviceSnapshot): boolean {
   return current === null
     || next.generation > current.generation
     || (next.generation === current.generation && next.revision >= current.revision);
 }
 
-export function reduceDeviceEvent(state: DeviceState, event: DeviceEvent): DeviceState {
+export function reduceDeviceEvent(state: DeviceState, event: DeviceStateEvent): DeviceState {
+  if (event.event === "session_reset") return initialDeviceState;
   if (event.event === "backend_error") return {
     ...state,
     error: event.data,

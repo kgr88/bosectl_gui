@@ -9,6 +9,7 @@ import { HomePage } from "./pages/HomePage";
 import { ProfilesPage } from "./pages/ProfilesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { initialDeviceState, reduceDeviceEvent } from "./state/deviceState";
+import { durableConnectionTarget } from "./state/connectionTarget";
 
 type Page = "home" | "equalizer" | "profiles" | "settings" | "diagnostics";
 
@@ -73,7 +74,8 @@ export default function App() {
       reconnectAttempts.current += 1;
       const target = lastTarget.current;
       if (!target) return;
-      dispatch({ event: "connection_changed", data: { state: "reconnecting", generation: state.snapshot?.generation ?? 0, revision: (state.snapshot?.revision ?? 0) + 1, reason: "retrying" } });
+      dispatch({ event: "session_reset" });
+      dispatch({ event: "connection_changed", data: { state: "reconnecting", generation: 0, revision: 0, reason: "retrying" } });
       void api.connect(target).then((next) => {
         reconnectAttempts.current = 0;
         setLocalError(null);
@@ -93,23 +95,19 @@ export default function App() {
     finally { setBusy(false); }
   }
   async function connect(target: ConnectionTarget) {
-    if (target.kind === "manual") lastTarget.current = target;
-    else {
-      const device = devices.find((item) => item.device_id === target.device_id);
-      if (device?.address && (device.device_type === "qc_ultra2" || device.device_type === "qc35")) {
-        lastTarget.current = { kind: "manual", address: device.address, device_type: device.device_type };
-      }
-    }
+    const durableTarget = durableConnectionTarget(target, devices);
+    if (durableTarget.kind === "manual") lastTarget.current = durableTarget;
     reconnectAttempts.current = 0;
+    dispatch({ event: "session_reset" });
     setBusy(true); setLocalError(null);
-    try { acceptSnapshot(await api.connect(target)); setPage("home"); }
+    try { acceptSnapshot(await api.connect(durableTarget)); setPage("home"); }
     catch (error) { reportError(error); }
     finally { setBusy(false); }
   }
   async function disconnect() {
     setBusy(true);
     lastTarget.current = null; reconnectAttempts.current = 0;
-    try { await api.disconnect(); dispatch({ event: "connection_changed", data: { state: "disconnected", generation: state.snapshot?.generation ?? 0, revision: (state.snapshot?.revision ?? 0) + 1, reason: null } }); }
+    try { await api.disconnect(); dispatch({ event: "session_reset" }); }
     catch (error) { reportError(error); }
     finally { setBusy(false); }
   }
