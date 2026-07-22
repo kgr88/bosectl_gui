@@ -55,3 +55,9 @@ Bluetooth audio routing.
 The renderer imports native APIs only through `src/api.ts`. Do not add shell,
 filesystem, path, process, or arbitrary event capabilities. The Rust host accepts
 typed domain inputs and validates them before the sidecar boundary.
+
+Renderer styling uses Tailwind CSS through the official Vite plugin. Theme tokens
+and the small set of global accessibility rules live in `src/styles/app.css`;
+shared utility class strings live in `src/styles/ui.ts`. Prefer Tailwind utilities
+in components and keep light/dark colors capability-neutral through the theme
+tokens instead of adding model-specific styles.

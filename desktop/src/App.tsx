@@ -10,6 +10,7 @@ import { ProfilesPage } from "./pages/ProfilesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { initialDeviceState, reduceDeviceEvent } from "./state/deviceState";
 import { durableConnectionTarget } from "./state/connectionTarget";
+import { iconButton, input, secondaryButton } from "./styles/ui";
 
 type Page = "home" | "equalizer" | "profiles" | "settings" | "diagnostics";
 
@@ -154,17 +155,17 @@ export default function App() {
     { id: "diagnostics", label: "Diagnostics", show: true },
   ];
 
-  return <main className="app-shell">
-    <header className="app-header"><div><p className="eyebrow">BMAP device controls</p><h1>{snapshot?.identity?.name ?? "bosectl"}</h1>{snapshot?.battery && <span className="battery" aria-label={`Battery ${snapshot.battery.percent} percent`}>{snapshot.battery.percent}% battery</span>}</div><div className="header-actions"><StatusPill state={state.connection} /><label className="theme-picker"><span className="sr-only">Color theme</span><select aria-label="Color theme" value={theme} onChange={(event) => setTheme(event.currentTarget.value as typeof theme)}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label></div></header>
-    {error && <div className="error" role="alert"><strong>{error.code}</strong><span>{error.message}</span><button className="icon-button secondary" aria-label="Dismiss error" onClick={() => setLocalError(null)}>×</button></div>}
+  return <main className="mx-auto w-full max-w-[900px] px-7 pt-6 pb-8 max-[600px]:p-[18px]">
+    <header className="flex items-center justify-between gap-3.5 max-[600px]:items-start"><div><p className="mb-1 text-[11px] font-bold tracking-[0.09em] text-muted uppercase">BMAP device controls</p><h1 className="mr-2.5 inline text-[25px] leading-[1.2] font-bold">{snapshot?.identity?.name ?? "bosectl"}</h1>{snapshot?.battery && <span className="whitespace-nowrap text-[13px] text-muted" aria-label={`Battery ${snapshot.battery.percent} percent`}>{snapshot.battery.percent}% battery</span>}</div><div className="flex items-center justify-between gap-3.5 self-start max-[600px]:flex-col max-[600px]:items-end"><StatusPill state={state.connection} /><label><span className="sr-only">Color theme</span><select className={`${input} min-h-[29px] py-[3px] text-xs`} aria-label="Color theme" value={theme} onChange={(event) => setTheme(event.currentTarget.value as typeof theme)}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label></div></header>
+    {error && <div className="mt-[18px] flex items-center gap-2.5 border-l-[3px] border-danger bg-danger/9 px-3 py-2.5 text-danger" role="alert"><strong>{error.code}</strong><span className="flex-1">{error.message}</span><button className={`${secondaryButton} ${iconButton}`} aria-label="Dismiss error" onClick={() => setLocalError(null)}>×</button></div>}
     {!connected ? <ConnectionPage devices={devices} busy={busy} state={state.connection} onDiscover={() => void discover()} onConnect={(device) => void connect({ kind: "discovered", device_id: device.device_id })} onManualConnect={(target) => void connect(target)} /> : <>
-      <nav className="tabs" aria-label="Device controls">{pages.filter((item) => item.show).map((item) => <button type="button" className={page === item.id ? "active" : "secondary"} aria-current={page === item.id ? "page" : undefined} key={item.id} onClick={() => setPage(item.id)}>{item.label}</button>)}</nav>
+      <nav className="mt-5 flex gap-[5px] overflow-x-auto rounded-[9px] border border-border bg-surface p-[3px] forced-colors:border-[CanvasText]" aria-label="Device controls">{pages.filter((item) => item.show).map((item) => <button type="button" className={`${page === item.id ? "border-accent bg-accent-soft text-accent" : "border-transparent bg-surface-raised text-ink"} min-h-[34px] flex-1 cursor-pointer rounded-[7px] border px-[13px] py-[7px] whitespace-nowrap disabled:cursor-default disabled:opacity-55`} aria-current={page === item.id ? "page" : undefined} key={item.id} onClick={() => setPage(item.id)}>{item.label}</button>)}</nav>
       {page === "home" && <HomePage snapshot={snapshot} onSnapshot={acceptSnapshot} onError={reportError} />}
       {page === "equalizer" && snapshot.capabilities.equalizer.length > 0 && <EqualizerPage snapshot={snapshot} onSnapshot={acceptSnapshot} onError={reportError} />}
       {page === "profiles" && snapshot.capabilities.profiles && <ProfilesPage snapshot={snapshot} onSnapshot={acceptSnapshot} onError={reportError} />}
       {page === "settings" && <SettingsPage snapshot={snapshot} onSnapshot={acceptSnapshot} onError={reportError} />}
       {page === "diagnostics" && <DiagnosticsPage snapshot={snapshot} busy={busy} onRefresh={() => void refresh()} onDisconnect={() => void disconnect()} />}
     </>}
-    <footer>Protocol v{PROTOCOL_VERSION} · controls are rendered from reported capabilities</footer>
+    <footer className="mt-[18px] text-center text-xs text-muted">Protocol v{PROTOCOL_VERSION} · controls are rendered from reported capabilities</footer>
   </main>;
 }

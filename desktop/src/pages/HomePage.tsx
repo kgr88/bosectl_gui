@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import type { DeviceSnapshot } from "../contracts";
 import { LatestWriteQueue } from "../state/latestWrite";
+import { card, eyebrow, heading, muted, secondaryButton, selectedButton } from "../styles/ui";
 
 interface Props {
   snapshot: DeviceSnapshot;
@@ -42,14 +43,14 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
   }, [queue]);
 
   if (!capability) {
-    return <section className="card"><h2>Noise control</h2><p className="muted">This device does not report a supported noise-control capability.</p></section>;
+    return <section className={card}><h2 className="text-[19px] font-bold">Noise control</h2><p className={muted}>This device does not report a supported noise-control capability.</p></section>;
   }
   return (
-    <section className="card" aria-labelledby="noise-title">
-      <div className="card__heading"><div><p className="eyebrow">Listening</p><h2 id="noise-title">Active noise cancellation</h2></div><output className="value-badge">{String(value)}</output></div>
+    <section className={card} aria-labelledby="noise-title">
+      <div className={heading}><div><p className={eyebrow}>Listening</p><h2 className="text-[19px] font-bold" id="noise-title">Active noise cancellation</h2></div><output className="min-w-[42px] rounded-full bg-accent-soft px-2.5 py-[5px] text-center font-bold text-accent">{String(value)}</output></div>
       {capability.range ? (
-        <label className="range-control">
-          <span>ANC strength</span>
+        <label className="mt-[22px] block">
+          <span className="mb-3 block font-semibold">ANC strength</span>
           <input
             aria-label="Active noise cancellation strength"
             type="range"
@@ -61,13 +62,13 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
             onPointerUp={() => void queue.flush()}
             onKeyUp={() => void queue.flush()}
           />
-          <span className="range-labels"><span>Awareness</span><span>Maximum ANC</span></span>
+          <span className="flex justify-between text-xs text-muted"><span>Awareness</span><span>Maximum ANC</span></span>
         </label>
       ) : (
-        <div className="segmented" role="group" aria-label="Noise control mode">
+        <div className="mt-5 flex flex-wrap gap-[7px]" role="group" aria-label="Noise control mode">
           {capability.options.map((option) => (
             <button
-              className={value === option.value ? "selected" : "secondary"}
+              className={`${value === option.value ? selectedButton : secondaryButton} min-w-20 flex-1`}
               type="button"
               aria-pressed={value === option.value}
               key={option.value}
