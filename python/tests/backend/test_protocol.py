@@ -34,6 +34,7 @@ def test_parameterless_operations_parse(method):
         ("set_eq", {"generation": 3, "bass": -2, "mid": 0, "treble": 4}),
         ("set_setting", {"generation": 3, "key": "sidetone", "value": "medium"}),
         ("get_profiles", {"generation": 3}),
+        ("poll_snapshot", {"generation": 3, "fields": ["noise_control", "battery"]}),
         ("delete_profile", {"generation": 3, "profile_id": "8"}),
     ],
 )
@@ -56,6 +57,13 @@ def test_invalid_requests_have_stable_codes(payload, code):
     with pytest.raises(ProtocolError) as caught:
         parse_request_line(payload)
     assert caught.value.code == code
+
+
+@pytest.mark.parametrize("fields", ([], ["battery", "battery"], ["firmware"]))
+def test_poll_rejects_empty_duplicate_and_broad_fields(fields):
+    with pytest.raises(ProtocolError) as caught:
+        parse_request_line(request("poll_snapshot", {"generation": 1, "fields": fields}))
+    assert caught.value.code == "INVALID_PARAMS"
 
 
 def test_worker_handshake_and_shutdown_use_stdout_only_for_protocol():

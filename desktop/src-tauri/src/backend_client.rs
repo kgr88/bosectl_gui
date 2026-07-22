@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::{self, BufRead, BufReader, Write},
-    path::PathBuf,
     process::{Child, ChildStdin, Command, Stdio},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -13,12 +12,16 @@ use std::{
 
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
-use crate::contracts::{ApiError, BackendInfo, DeviceEvent, ErrorCode, PROTOCOL_VERSION};
+use crate::{
+    contracts::{ApiError, BackendInfo, ConnectionState, DeviceEvent, ErrorCode, PROTOCOL_VERSION},
+    state::AppState,
+};
 
 const MAX_LINE_BYTES: usize = 64 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(12);
+const SLOW_REQUEST_TIMEOUT: Duration = Duration::from_secs(45);
 type PendingSender = mpsc::Sender<Result<Value, ApiError>>;
 
 struct BackendProcess {
@@ -106,7 +109,13 @@ impl BackendClient {
             return Err(ApiError::backend_crashed("The backend input stream closed"));
         }
 
-        let value = match receiver.recv_timeout(REQUEST_TIMEOUT) {
+        let timeout = match method {
+            "connect" | "discover" | "get_profiles" | "set_profile" | "delete_profile" => {
+                SLOW_REQUEST_TIMEOUT
+            }
+            _ => REQUEST_TIMEOUT,
+        };
+        let value = match receiver.recv_timeout(timeout) {
             Ok(result) => result?,
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 self.inner.pending.lock().ok().and_then(|mut pending| pending.remove(&id));
@@ -237,6 +246,8 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
             match serde_json::from_value::<DeviceEvent>(message) {
                 Ok(event) if event.validate_wire().is_ok() => {
                     if let Some(app) = inner.app.lock().ok().and_then(|app| app.clone()) {
+                        app.state::<AppState>().record_backend_event(&event);
+                        update_tray_status(&app, &event);
                         let _ = app.emit_to("main", "bose://device-event", event);
                     }
                 }
@@ -250,6 +261,37 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
     inner.healthy.store(false, Ordering::Release);
     if !inner.stopping.load(Ordering::Acquire) {
         fail_all(&inner, ApiError::backend_crashed("The backend exited unexpectedly"));
+    }
+}
+
+fn update_tray_status(app: &AppHandle, event: &DeviceEvent) {
+    let tooltip = match event {
+        DeviceEvent::SnapshotChanged { data }
+            if data.connection.state == ConnectionState::Connected =>
+        {
+            let name = data.identity.as_ref().map_or("Headset", |identity| identity.name.as_str());
+            let battery = data
+                .battery
+                .as_ref()
+                .map(|battery| format!(" · {}%", battery.percent))
+                .unwrap_or_default();
+            format!("bosectl · {name}{battery}")
+        }
+        DeviceEvent::ConnectionChanged { data } => match data.state {
+            ConnectionState::Discovering => "bosectl · Discovering…".into(),
+            ConnectionState::Connecting | ConnectionState::Reconnecting => {
+                "bosectl · Connecting…".into()
+            }
+            ConnectionState::Disconnecting => "bosectl · Disconnecting…".into(),
+            ConnectionState::Disconnected => "bosectl · Disconnected".into(),
+            ConnectionState::Error => "bosectl · Connection error".into(),
+            ConnectionState::Connected => "bosectl · Connected".into(),
+        },
+        DeviceEvent::BackendError { .. } => "bosectl · Backend error".into(),
+        DeviceEvent::SnapshotChanged { .. } => "bosectl".into(),
+    };
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(tooltip));
     }
 }
 
@@ -295,10 +337,13 @@ fn discard_line<R: BufRead>(reader: &mut R) -> io::Result<()> {
 fn fail_all(inner: &ClientInner, error: ApiError) {
     fail_pending(inner, error.clone());
     if let Some(app) = inner.app.lock().ok().and_then(|app| app.clone()) {
+        let event = DeviceEvent::BackendError { data: error };
+        app.state::<AppState>().record_backend_event(&event);
+        update_tray_status(&app, &event);
         let _ = app.emit_to(
             "main",
             "bose://device-event",
-            DeviceEvent::BackendError { data: error },
+            event,
         );
     }
 }
@@ -313,7 +358,7 @@ fn fail_pending(inner: &ClientInner, error: ApiError) {
 
 #[cfg(debug_assertions)]
 fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout), ApiError> {
-    let python_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../python");
+    let python_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../python");
     let mut command = if let Some(executable) = std::env::var_os("PYBMAP_PYTHON") {
         Command::new(executable)
     } else {

@@ -3,7 +3,7 @@ import socket
 import pytest
 
 from pybmap.errors import BmapConnectionError
-from pybmap.transport import RfcommTransport
+from pybmap.transport import RfcommTransport, _translate_socket_error
 
 
 class FakeSocket:
@@ -65,3 +65,17 @@ def test_truncated_frame_reports_device_loss():
     transport = transport_with([b"\x01\x01\x03\x04A", b""])
     with pytest.raises(BmapConnectionError, match="closed"):
         transport.send_recv(b"request")
+
+
+@pytest.mark.parametrize("winerror,code", [
+    (10050, "BLUETOOTH_DISABLED"),
+    (10061, "SERVICE_NOT_FOUND"),
+    (10065, "DEVICE_NOT_FOUND"),
+    (10054, "DEVICE_LOST"),
+])
+def test_windows_socket_categories_remain_actionable(winerror, code):
+    error = OSError()
+    error.winerror = winerror
+    translated = _translate_socket_error(error, "connect", channel=7)
+    assert translated.code == code
+    assert translated.channel == 7

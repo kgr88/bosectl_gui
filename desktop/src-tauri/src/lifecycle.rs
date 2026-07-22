@@ -120,6 +120,8 @@ pub fn run() {
             commands::connect_device,
             commands::disconnect_device,
             commands::get_device_snapshot,
+            commands::get_current_device_snapshot,
+            commands::poll_device_snapshot,
             commands::set_noise_control,
             commands::set_equalizer,
             commands::set_device_setting,
@@ -132,7 +134,7 @@ pub fn run() {
             let open = MenuItem::with_id(app, "open", "Open controls", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
-            TrayIconBuilder::new()
+            TrayIconBuilder::with_id("main-tray")
                 .icon(tray_image())
                 .tooltip("bosectl")
                 .menu(&menu)

@@ -11,6 +11,7 @@ export function DiagnosticsPage({ snapshot, busy, onRefresh, onDisconnect }: { s
     <div><dt>Connection generation</dt><dd>{snapshot.generation}</dd></div>
     <div><dt>Snapshot revision</dt><dd>{snapshot.revision}</dd></div>
     <div><dt>Address</dt><dd>{snapshot.identity?.address ?? "Not reported"}</dd></div>
+    <div><dt>RFCOMM channel</dt><dd>{snapshot.connection.rfcomm_channel ?? "Not reported"}</dd></div>
     <div><dt>Backend</dt><dd>{backend ? `${backend.backend_version} · Python ${backend.python_version}` : "Loading…"}</dd></div>
   </dl><div className="button-row"><button type="button" disabled={busy} onClick={onRefresh}>Refresh now</button><button className="secondary" type="button" disabled={busy} onClick={onDisconnect}>Disconnect</button></div></section>;
 }

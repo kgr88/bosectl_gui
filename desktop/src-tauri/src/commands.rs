@@ -41,12 +41,31 @@ pub async fn connect_device(
 pub async fn disconnect_device(state: State<'_, AppState>) -> Result<Ack, ApiError> {
     let result = call(state.backend.clone(), "disconnect", json!({})).await;
     state.backend.shutdown();
+    state.clear_snapshot();
     result
 }
 
 #[tauri::command]
 pub async fn get_device_snapshot(state: State<'_, AppState>) -> Result<DeviceSnapshot, ApiError> {
     let snapshot = call(state.backend.clone(), "get_snapshot", json!({})).await?;
+    state.accept_snapshot(snapshot)
+}
+
+#[tauri::command]
+pub fn get_current_device_snapshot(
+    state: State<'_, AppState>,
+) -> Result<Option<DeviceSnapshot>, ApiError> {
+    state.current_snapshot()
+}
+
+#[tauri::command]
+pub async fn poll_device_snapshot(
+    state: State<'_, AppState>,
+    request: PollSnapshotRequest,
+) -> Result<DeviceSnapshot, ApiError> {
+    request.validate()?;
+    state.validate_generation(request.generation)?;
+    let snapshot = call(state.backend.clone(), "poll_snapshot", request).await?;
     state.accept_snapshot(snapshot)
 }
 

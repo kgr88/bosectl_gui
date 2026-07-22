@@ -54,21 +54,29 @@ class TestRead:
         assert len(name) > 0
 
     def test_mode(self, dev):
+        if not dev.has_feature("current_mode"):
+            pytest.skip("current modes are not supported by this model")
         mode = dev.mode()
         assert isinstance(mode, str)
 
     def test_mode_idx(self, dev):
+        if not dev.has_feature("current_mode"):
+            pytest.skip("current modes are not supported by this model")
         idx = dev.mode_idx()
         assert isinstance(idx, int)
         assert 0 <= idx <= 10
 
     def test_cnc(self, dev):
+        if not dev.has_feature("cnc"):
+            pytest.skip("CNC is not supported by this model")
         current, maximum = dev.cnc()
         assert isinstance(current, int)
         assert isinstance(maximum, int)
         assert 0 <= current <= maximum
 
     def test_eq(self, dev):
+        if not dev.has_feature("eq"):
+            pytest.skip("EQ is not supported by this model")
         bands = dev.eq()
         assert isinstance(bands, list)
         assert len(bands) > 0
@@ -80,24 +88,34 @@ class TestRead:
         assert isinstance(st, str)
 
     def test_multipoint(self, dev):
+        if not dev.has_feature("multipoint"):
+            pytest.skip("multipoint is not supported by this model")
         mp = dev.multipoint()
         assert isinstance(mp, bool)
 
     def test_auto_pause(self, dev):
+        if not dev.has_feature("auto_pause"):
+            pytest.skip("auto pause is not supported by this model")
         ap = dev.auto_pause()
         assert isinstance(ap, bool)
 
     def test_prompts(self, dev):
+        if not dev.has_feature("voice_prompts"):
+            pytest.skip("voice prompts are not supported by this model")
         enabled, lang = dev.prompts()
         assert isinstance(enabled, bool)
         assert isinstance(lang, str)
 
     def test_buttons(self, dev):
+        if not dev.has_feature("buttons"):
+            pytest.skip("button mapping is not supported by this model")
         btn = dev.buttons()
         assert btn is not None
         assert btn.button_name is not None
 
     def test_modes(self, dev):
+        if not dev.has_feature("get_all_modes"):
+            pytest.skip("profiles are not supported by this model")
         modes = dev.modes()
         assert isinstance(modes, dict)
         assert len(modes) > 0
@@ -120,32 +138,56 @@ class TestRead:
         info = dev.device_info
         assert "name" in info
 
+    def test_validated_rfcomm_endpoint(self, dev):
+        assert 1 <= dev.rfcomm_channel <= 30
+
 
 class TestWrite:
     """Write tests — these change device state! They attempt to restore it."""
 
-    def test_set_cnc_roundtrip(self, dev):
-        """Set CNC, verify, restore."""
-        original, _ = dev.cnc()
-        dev.set_cnc(5)
-        current, _ = dev.cnc()
-        # Restore
+    def test_primary_noise_control_roundtrip(self, dev):
+        """Exercise the model's primary noise control and always restore it."""
+        if dev.has_feature("cnc"):
+            original, _ = dev.cnc()
+            changed = 5 if original != 5 else 6
+            try:
+                dev.set_cnc(changed)
+                current, _ = dev.cnc()
+                assert current == changed
+            finally:
+                dev.set_cnc(original)
+            return
+        if not dev.has_feature("anr"):
+            pytest.skip("no writable primary noise control")
+        original = dev.anr()
+        changed = "low" if original != "low" else "high"
         try:
-            dev.set_cnc(original)
-        except BmapError:
-            pass
-        assert current == 5
+            dev.set_anr(changed)
+            assert dev.anr() == changed
+        finally:
+            dev.set_anr(original)
 
     def test_set_eq_roundtrip(self, dev):
         """Set EQ, verify, restore."""
+        if not dev.has_feature("eq"):
+            pytest.skip("EQ is not supported by this model")
         original = dev.eq()
-        dev.set_eq(2, -1, 3)
-        bands = dev.eq()
-        # Restore
         try:
+            dev.set_eq(2, -1, 3)
+            bands = dev.eq()
+            assert bands[0].current == 2
+            assert bands[1].current == -1
+            assert bands[2].current == 3
+        finally:
             dev.set_eq(original[0].current, original[1].current, original[2].current)
-        except BmapError:
-            pass
-        assert bands[0].current == 2
-        assert bands[1].current == -1
-        assert bands[2].current == 3
+
+    def test_set_sidetone_roundtrip(self, dev):
+        if not dev.has_feature("sidetone") or not dev.feature_writable("sidetone"):
+            pytest.skip("sidetone is not writable on this model")
+        original = dev.sidetone()
+        changed = "low" if original != "low" else "medium"
+        try:
+            dev.set_sidetone(changed)
+            assert dev.sidetone() == changed
+        finally:
+            dev.set_sidetone(original)

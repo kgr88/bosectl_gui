@@ -15,6 +15,7 @@ METHODS = (
     "connect",
     "disconnect",
     "get_snapshot",
+    "poll_snapshot",
     "set_noise_control",
     "set_eq",
     "set_setting",
@@ -152,6 +153,14 @@ def validate_params(method, params, request_id):
     params = _require_object(params, "params", request_id)
     if method in ("hello", "discover", "disconnect", "get_snapshot", "shutdown"):
         _strict_keys(params, (), (), request_id)
+    elif method == "poll_snapshot":
+        _strict_keys(params, ("generation", "fields"), (), request_id)
+        _generation(params, request_id)
+        fields = params["fields"]
+        if (not isinstance(fields, list) or not fields or len(fields) > 2
+                or len(set(fields)) != len(fields)
+                or any(field not in ("battery", "noise_control") for field in fields)):
+            _fail("fields must contain battery and/or noise_control", request_id)
     elif method == "connect":
         _strict_keys(params, ("target",), (), request_id)
         _validate_target(params["target"], request_id)

@@ -12,7 +12,7 @@ const ultraProfiles: Profile[] = [
 function disconnected(): DeviceSnapshot {
   return {
     identity: null, battery: null, firmware: null,
-    connection: { state: "disconnected", reason: null },
+    connection: { state: "disconnected", reason: null, rfcomm_channel: null },
     capabilities: { noise_control: null, equalizer: [], settings: [], profiles: null },
     values: { noise_control: null, eq: {}, settings: {}, profile_id: null },
     generation: 0, revision: 0,
@@ -21,9 +21,9 @@ function disconnected(): DeviceSnapshot {
 
 function connected(kind: "qc_ultra2" | "qc35", generation: number): DeviceSnapshot {
   if (kind === "qc35") return {
-    identity: { device_id: "AA:BB:CC:35:00:01", name: "QuietComfort 35 II", model: "Bose QuietComfort 35", product_id: 0x4020, address: "AA:BB:CC:35:00:01" },
+    identity: { device_id: "AA:BB:CC:35:00:01", name: "QuietComfort 35 II", model: "Bose QuietComfort 35", product_id: 0x4020, device_type: "qc35", address: "AA:BB:CC:35:00:01" },
     battery: { percent: 72, charging: null }, firmware: { version: "4.8.1" },
-    connection: { state: "connected", reason: null },
+    connection: { state: "connected", reason: null, rfcomm_channel: 8 },
     capabilities: {
       noise_control: { kind: "anr", range: null, options: ["off", "low", "wind", "high"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })) },
       equalizer: [],
@@ -37,9 +37,9 @@ function connected(kind: "qc_ultra2" | "qc35", generation: number): DeviceSnapsh
   };
   const band = (id: string, label: string) => ({ id, label, minimum: -10, maximum: 10, step: 1 });
   return {
-    identity: { device_id: "AA:BB:CC:02:00:01", name: "QuietComfort Ultra 2", model: "Bose QC Ultra Headphones 2", product_id: 0x4082, address: "AA:BB:CC:02:00:01" },
+    identity: { device_id: "AA:BB:CC:02:00:01", name: "QuietComfort Ultra 2", model: "Bose QC Ultra Headphones 2", product_id: 0x4082, device_type: "qc_ultra2", address: "AA:BB:CC:02:00:01" },
     battery: { percent: 88, charging: false }, firmware: { version: "8.2.20" },
-    connection: { state: "connected", reason: null },
+    connection: { state: "connected", reason: null, rfcomm_channel: 2 },
     capabilities: {
       noise_control: { kind: "cnc", range: { minimum: 0, maximum: 10, step: 1 }, options: [] },
       equalizer: [band("bass", "Bass"), band("mid", "Mid"), band("treble", "Treble")],
@@ -78,6 +78,8 @@ export function createMockApi(): BoseApi {
     async connect(target) { snapshot = connected(targetType(target), snapshot.generation + 1); publish(); return snapshot; },
     async disconnect() { snapshot = { ...disconnected(), generation: snapshot.generation, revision: snapshot.revision + 1 }; listeners.forEach((listener) => listener({ event: "connection_changed", data: { state: "disconnected", generation: snapshot.generation, revision: snapshot.revision, reason: null } })); },
     async refresh() { return snapshot; },
+    async currentSnapshot() { return snapshot.connection.state === "connected" ? snapshot : null; },
+    async poll() { return update((current) => current); },
     setNoiseControl(request) { return update((current) => ({ ...current, values: { ...current.values, noise_control: { kind: request.kind, value: request.value }, profile_id: request.kind === "mode" ? profiles.find((profile) => profile.name === request.value)?.profile_id ?? current.values.profile_id : current.values.profile_id } })); },
     setEq(request) { return update((current) => ({ ...current, values: { ...current.values, eq: { bass: request.bass, mid: request.mid, treble: request.treble } } })); },
     setSetting(request) { return update((current) => ({ ...current, values: { ...current.values, settings: { ...current.values.settings, [request.key]: request.value } } })); },

@@ -67,6 +67,7 @@ export interface DeviceIdentity {
   name: string;
   model: string;
   product_id: number | null;
+  device_type: "qc_ultra2" | "qc35";
   address: string | null;
 }
 
@@ -82,7 +83,10 @@ export interface FirmwareInfo {
 export interface ConnectionStatus {
   state: ConnectionState;
   reason: string | null;
+  rfcomm_channel: number | null;
 }
+
+export type PollField = "battery" | "noise_control";
 
 export interface Choice {
   value: string;
@@ -289,11 +293,15 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
     return false;
   }
   if (!isObject(value.connection) || !CONNECTION_STATES.includes(String(value.connection.state))
-      || !isNullableString(value.connection.reason)) {
+      || !isNullableString(value.connection.reason)
+      || !(value.connection.rfcomm_channel === null
+        || (isNonNegativeInteger(value.connection.rfcomm_channel)
+          && value.connection.rfcomm_channel >= 1 && value.connection.rfcomm_channel <= 30))) {
     return false;
   }
   if (value.identity !== null && (!isObject(value.identity) || typeof value.identity.device_id !== "string"
       || typeof value.identity.name !== "string" || typeof value.identity.model !== "string"
+      || !["qc_ultra2", "qc35"].includes(String(value.identity.device_type))
       || !isNullableString(value.identity.address))) return false;
   if (value.battery !== null && (!isObject(value.battery) || !isNonNegativeInteger(value.battery.percent)
       || (value.battery.percent as number) > 100
@@ -329,7 +337,8 @@ export function isDiscoveredDevice(value: unknown): value is DiscoveredDevice {
     && isNullableString(value.address)
     && (value.product_id === null || isNonNegativeInteger(value.product_id))
     && isNullableString(value.device_type)
-    && (value.rfcomm_channel === null || isNonNegativeInteger(value.rfcomm_channel))
+    && (value.rfcomm_channel === null || (isNonNegativeInteger(value.rfcomm_channel)
+      && value.rfcomm_channel >= 1 && value.rfcomm_channel <= 30))
     && typeof value.paired === "boolean"
     && typeof value.supported === "boolean";
 }

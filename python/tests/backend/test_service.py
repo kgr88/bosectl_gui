@@ -5,6 +5,7 @@ import pytest
 from pybmap.backend.protocol import ProtocolError
 from pybmap.backend.service import BackendService
 from pybmap.discovery import _detect_device_type, _device_from_name
+from pybmap.errors import BmapConnectionError
 
 
 EqBand = namedtuple("EqBand", ["name", "min_val", "max_val", "current"])
@@ -17,6 +18,7 @@ class FakeConnection:
 
     def __init__(self):
         self.closed = False
+        self.rfcomm_channel = 8
         self.anr_value = "high"
         self.sidetone_value = "medium"
 
@@ -92,6 +94,7 @@ def test_manual_connect_returns_capability_driven_qc35_snapshot():
     assert snapshot["capabilities"]["noise_control"]["kind"] == "anr"
     assert snapshot["capabilities"]["equalizer"] == []
     assert snapshot["values"]["noise_control"] == {"kind": "anr", "value": "high"}
+    assert snapshot["connection"]["rfcomm_channel"] == 8
 
 
 def test_mutation_checks_generation_and_returns_authoritative_value():
@@ -120,6 +123,38 @@ def test_disconnect_closes_the_only_owned_connection():
     with pytest.raises(ProtocolError) as caught:
         service.handle("get_snapshot", {})
     assert caught.value.code == "NOT_CONNECTED"
+
+
+def test_selective_poll_reads_only_requested_live_values():
+    connection = FakeConnection()
+    service = BackendService(connector=connector(connection), discoverer=lambda: [])
+    snapshot = service.handle("connect", {
+        "target": {"kind": "manual", "address": "AA:BB:CC:DD:EE:FF", "device_type": "qc35"}
+    })
+    connection.anr_value = "wind"
+
+    polled = service.handle("poll_snapshot", {
+        "generation": snapshot["generation"], "fields": ["noise_control"],
+    })
+
+    assert polled["values"]["noise_control"]["value"] == "wind"
+    assert polled["battery"] == snapshot["battery"]
+
+
+def test_typed_channel_rejection_reaches_the_protocol_boundary():
+    def rejected(**_kwargs):
+        raise BmapConnectionError(
+            "rejected", code="SERVICE_NOT_FOUND", channel=7
+        )
+
+    service = BackendService(connector=rejected, discoverer=lambda: [])
+    with pytest.raises(ProtocolError) as caught:
+        service.handle("connect", {
+            "target": {"kind": "manual", "address": "AA:BB:CC:DD:EE:FF", "device_type": "qc35"}
+        })
+
+    assert caught.value.code == "SERVICE_NOT_FOUND"
+    assert caught.value.details == {"rfcomm_channel": 7}
 
 
 def test_unknown_discovery_never_defaults_to_ultra():

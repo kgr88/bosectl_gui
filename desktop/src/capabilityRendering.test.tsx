@@ -7,7 +7,7 @@ import { HomePage } from "./pages/HomePage";
 function snapshot(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
   return {
     identity: null, battery: null, firmware: null,
-    connection: { state: "connected", reason: null },
+    connection: { state: "connected", reason: null, rfcomm_channel: 2 },
     capabilities: { noise_control: null, equalizer: [], settings: [], profiles: null },
     values: { noise_control: null, eq: {}, settings: {}, profile_id: null },
     generation: 1, revision: 1, ...overrides,

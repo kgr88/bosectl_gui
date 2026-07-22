@@ -38,6 +38,11 @@ class BmapConnection:
         self._transport = transport
         self._device = device
 
+    @property
+    def rfcomm_channel(self):
+        """The RFCOMM channel selected for this validated connection."""
+        return getattr(self._transport, "channel", None)
+
     def _feature(self, name):
         """Look up a feature config entry. Raises BmapError if unsupported."""
         features = self._device.FEATURES

@@ -8,6 +8,11 @@ class BmapError(Exception):
 class BmapConnectionError(BmapError):
     """Failed to connect to the device."""
 
+    def __init__(self, message, code="CONNECTION_FAILED", channel=None):
+        super().__init__(message)
+        self.code = code
+        self.channel = channel
+
 
 class BmapAuthError(BmapError):
     """Operation requires authentication."""

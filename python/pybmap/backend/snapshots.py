@@ -21,11 +21,14 @@ class NoiseControlKind(str, Enum):
 
 
 DeviceIdentity = namedtuple(
-    "DeviceIdentity", ["device_id", "name", "model", "product_id", "address"]
+    "DeviceIdentity",
+    ["device_id", "name", "model", "product_id", "device_type", "address"],
 )
 BatteryStatus = namedtuple("BatteryStatus", ["percent", "charging"])
 FirmwareInfo = namedtuple("FirmwareInfo", ["version"])
-ConnectionStatus = namedtuple("ConnectionStatus", ["state", "reason"])
+ConnectionStatus = namedtuple(
+    "ConnectionStatus", ["state", "reason", "rfcomm_channel"]
+)
 Choice = namedtuple("Choice", ["value", "label"])
 RangeCapability = namedtuple("RangeCapability", ["minimum", "maximum", "step"])
 NoiseControlCapability = namedtuple(

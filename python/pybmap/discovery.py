@@ -7,8 +7,10 @@ dependency.  Discovery never guesses an unknown device configuration.
 
 import ctypes
 import re
+import socket
 import subprocess
 import sys
+import uuid
 from collections import namedtuple
 from ctypes import wintypes
 
@@ -225,9 +227,11 @@ def _scan_windows_devices():
                             if BMAP_UUID.lower() in services:
                                 address = _format_bluetooth_address(info.Address)
                                 product_id, device_type = _device_from_name(info.szName)
+                                channels = resolve_rfcomm_channels(address)
                                 records[address] = DiscoveredDevice(
                                     address, info.szName or "Bose device", BMAP_UUID,
-                                    _channel_for_type(device_type), product_id, device_type,
+                                    channels[0] if channels else _channel_for_type(device_type),
+                                    product_id, device_type,
                                     True, bool(info.fConnected),
                                 )
                         info = BLUETOOTH_DEVICE_INFO()
@@ -275,3 +279,135 @@ def _guid_bytes_to_text(raw):
     return "%08x-%04x-%04x-%s-%s" % (
         data1, data2, data3, data4[:2].hex(), data4[2:].hex()
     )
+
+
+def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
+    """Resolve connectable RFCOMM ports from a Windows Bluetooth SDP record.
+
+    Windows' installed-service enumeration only confirms that the BMAP UUID is
+    present. A Winsock service lookup returns the complete ``SOCKADDR_BTH``,
+    including the current RFCOMM port advertised by the headset. Failures are
+    deliberately non-fatal here so callers can try ordered catalog fallbacks.
+    """
+    if sys.platform != "win32":
+        return []
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD), ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    class SOCKADDR(ctypes.Structure):
+        _fields_ = [("sa_family", wintypes.USHORT), ("sa_data", ctypes.c_char * 14)]
+
+    class SOCKADDR_BTH(ctypes.Structure):
+        _fields_ = [
+            ("address_family", wintypes.USHORT),
+            ("bt_addr", ctypes.c_ulonglong),
+            ("service_class_id", GUID),
+            ("port", wintypes.ULONG),
+        ]
+
+    class SOCKET_ADDRESS(ctypes.Structure):
+        _fields_ = [("lp_sockaddr", ctypes.POINTER(SOCKADDR)), ("length", ctypes.c_int)]
+
+    class CSADDR_INFO(ctypes.Structure):
+        _fields_ = [
+            ("local_addr", SOCKET_ADDRESS), ("remote_addr", SOCKET_ADDRESS),
+            ("socket_type", ctypes.c_int), ("protocol", ctypes.c_int),
+        ]
+
+    class WSAQUERYSET(ctypes.Structure):
+        _fields_ = [
+            ("size", wintypes.DWORD), ("service_instance_name", wintypes.LPWSTR),
+            ("service_class_id", ctypes.POINTER(GUID)),
+            ("version", ctypes.c_void_p), ("comment", wintypes.LPWSTR),
+            ("namespace", wintypes.DWORD), ("namespace_provider_id", ctypes.c_void_p),
+            ("context", wintypes.LPWSTR), ("protocol_count", wintypes.DWORD),
+            ("protocols", ctypes.c_void_p), ("query_string", wintypes.LPWSTR),
+            ("address_count", wintypes.DWORD),
+            ("addresses", ctypes.POINTER(CSADDR_INFO)),
+            ("output_flags", wintypes.DWORD), ("blob", ctypes.c_void_p),
+        ]
+
+    ws2 = ctypes.WinDLL("ws2_32", use_last_error=True)
+    ws2.WSAAddressToStringW.argtypes = [
+        ctypes.POINTER(SOCKADDR), wintypes.DWORD, ctypes.c_void_p,
+        wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD),
+    ]
+    ws2.WSAAddressToStringW.restype = ctypes.c_int
+    ws2.WSALookupServiceBeginW.argtypes = [
+        ctypes.POINTER(WSAQUERYSET), wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE),
+    ]
+    ws2.WSALookupServiceBeginW.restype = ctypes.c_int
+    ws2.WSALookupServiceNextW.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p,
+    ]
+    ws2.WSALookupServiceNextW.restype = ctypes.c_int
+    ws2.WSALookupServiceEnd.argtypes = [wintypes.HANDLE]
+    ws2.WSALookupServiceEnd.restype = ctypes.c_int
+    ws2.WSAGetLastError.restype = ctypes.c_int
+
+    sockaddr = SOCKADDR_BTH()
+    sockaddr.address_family = socket.AF_BLUETOOTH
+    sockaddr.bt_addr = int(address.replace(":", ""), 16)
+    context_buffer = ctypes.create_unicode_buffer(128)
+    context_length = wintypes.DWORD(len(context_buffer))
+    if ws2.WSAAddressToStringW(
+        ctypes.cast(ctypes.byref(sockaddr), ctypes.POINTER(SOCKADDR)),
+        ctypes.sizeof(sockaddr), None, context_buffer, ctypes.byref(context_length),
+    ) != 0:
+        return []
+
+    uuid_value = uuid.UUID(service_uuid)
+    uuid_bytes = uuid_value.bytes_le
+    service_guid = GUID(
+        int.from_bytes(uuid_bytes[0:4], "little"),
+        int.from_bytes(uuid_bytes[4:6], "little"),
+        int.from_bytes(uuid_bytes[6:8], "little"),
+        (ctypes.c_ubyte * 8)(*uuid_bytes[8:]),
+    )
+    query = WSAQUERYSET()
+    query.size = ctypes.sizeof(query)
+    query.service_class_id = ctypes.pointer(service_guid)
+    query.namespace = 16  # NS_BTH
+    query.context = ctypes.cast(context_buffer, wintypes.LPWSTR)
+
+    lookup = wintypes.HANDLE()
+    lup_return_addr = 0x0100
+    control_flags = lup_return_addr | (0x1000 if flush_cache else 0)  # LUP_FLUSHCACHE
+    if ws2.WSALookupServiceBeginW(
+        ctypes.byref(query), control_flags, ctypes.byref(lookup)
+    ) != 0:
+        return []
+
+    channels = []
+    try:
+        buffer_size = 4096
+        while True:
+            result_buffer = ctypes.create_string_buffer(buffer_size)
+            result_size = wintypes.DWORD(buffer_size)
+            result = ws2.WSALookupServiceNextW(
+                lookup, lup_return_addr, ctypes.byref(result_size), result_buffer,
+            )
+            if result != 0:
+                error = ws2.WSAGetLastError()
+                if error == 10014 and result_size.value > buffer_size:  # WSAEFAULT: grow buffer
+                    buffer_size = result_size.value
+                    continue
+                break
+            result_query = ctypes.cast(result_buffer, ctypes.POINTER(WSAQUERYSET)).contents
+            for index in range(result_query.address_count):
+                info = result_query.addresses[index]
+                for socket_address in (info.local_addr, info.remote_addr):
+                    if not socket_address.lp_sockaddr or socket_address.length < ctypes.sizeof(SOCKADDR_BTH):
+                        continue
+                    endpoint = ctypes.cast(
+                        socket_address.lp_sockaddr, ctypes.POINTER(SOCKADDR_BTH)
+                    ).contents
+                    if 1 <= endpoint.port <= 30 and endpoint.port not in channels:
+                        channels.append(endpoint.port)
+    finally:
+        ws2.WSALookupServiceEnd(lookup)
+    return channels

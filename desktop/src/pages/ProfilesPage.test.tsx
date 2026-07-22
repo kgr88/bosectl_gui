@@ -5,7 +5,7 @@ import { deviceCncLevel, profileAncStrength, ProfilesPage } from "./ProfilesPage
 
 const snapshot: DeviceSnapshot = {
   identity: null, battery: null, firmware: null,
-  connection: { state: "connected", reason: null },
+  connection: { state: "connected", reason: null, rfcomm_channel: 2 },
   capabilities: {
     noise_control: null, equalizer: [], settings: [],
     profiles: { maximum: 7, supports_delete: true },

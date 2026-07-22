@@ -7,7 +7,8 @@ import pybmap
 from pybmap import __version__
 from pybmap.discovery import BluetoothDiscoveryError, discover_devices
 from pybmap.errors import (
-    BmapConnectionError, BmapError, BmapNotFoundError, BmapTimeoutError,
+    BmapAuthError, BmapConnectionError, BmapError, BmapNotFoundError,
+    BmapTimeoutError,
 )
 
 from .protocol import METHODS, PROTOCOL_VERSION, ProtocolError
@@ -46,7 +47,7 @@ class BackendService(object):
 
     def _empty_snapshot(self, state=ConnectionState.DISCONNECTED, reason=None):
         return DeviceSnapshot(
-            None, None, None, ConnectionStatus(state, reason),
+            None, None, None, ConnectionStatus(state, reason, None),
             self._empty_capabilities(), DeviceValues(None, {}, {}, None),
             self.generation, self.revision,
         )
@@ -147,6 +148,35 @@ class BackendService(object):
         self._require_connection()
         return self._refresh_snapshot()
 
+    def _handle_poll_snapshot(self, params):
+        connection = self._require_generation(params["generation"])
+        snapshot = self._snapshot
+        battery = snapshot.battery
+        values = snapshot.values
+        try:
+            if "battery" in params["fields"]:
+                percent = connection.battery()
+                battery = BatteryStatus(max(0, min(100, int(percent))), None)
+            if "noise_control" in params["fields"]:
+                capability = snapshot.capabilities.noise_control
+                noise_value = values.noise_control
+                if capability is not None and capability.kind == NoiseControlKind.CNC:
+                    current, _ = connection.cnc()
+                    noise_value = {"kind": "cnc", "value": current}
+                elif capability is not None and capability.kind == NoiseControlKind.ANR:
+                    noise_value = {"kind": "anr", "value": connection.anr()}
+                profile_id = values.profile_id
+                if snapshot.capabilities.profiles is not None:
+                    profile_id = str(connection.mode_idx())
+                values = values._replace(
+                    noise_control=noise_value, profile_id=profile_id
+                )
+            return self._bump(snapshot._replace(battery=battery, values=values))
+        except (BmapConnectionError, BmapTimeoutError):
+            self._close_connection()
+            self._connection_state(ConnectionState.ERROR, "device_lost")
+            raise
+
     def _handle_set_noise_control(self, params):
         connection = self._require_generation(params["generation"])
         kind, value = params["kind"], params["value"]
@@ -244,11 +274,14 @@ class BackendService(object):
             identity = DeviceIdentity(
                 self._address.upper(), name or connection.device_info["name"],
                 connection.device_info["name"], self._product_id or connection.device_info.get("product_id"),
-                self._address,
+                self._device_type, self._address,
             )
             snapshot = DeviceSnapshot(
                 identity, BatteryStatus(max(0, min(100, int(battery))), None),
-                FirmwareInfo(firmware or ""), ConnectionStatus(ConnectionState.CONNECTED, None),
+                FirmwareInfo(firmware or ""), ConnectionStatus(
+                    ConnectionState.CONNECTED, None,
+                    getattr(connection, "rfcomm_channel", None),
+                ),
                 capabilities, values, self.generation, self.revision,
             )
             return self._bump(snapshot)
@@ -332,19 +365,34 @@ class BackendService(object):
         return {"generation": self.generation, "revision": self.revision, "profiles": profiles}
 
     def _translate_error(self, exc):
+        if isinstance(exc, BmapAuthError):
+            return ProtocolError(
+                "DEVICE_NOT_PAIRED",
+                "The headset rejected BMAP authentication; remove and pair it again",
+                retryable=True,
+            )
         if isinstance(exc, BmapTimeoutError):
             return ProtocolError("DEVICE_TIMEOUT", "The headset did not respond", retryable=True)
         if isinstance(exc, BmapNotFoundError):
             return ProtocolError("DEVICE_NOT_FOUND", "No supported paired headset was found", retryable=True)
         if isinstance(exc, BmapConnectionError):
-            message = str(exc).lower()
-            if "denied" in message:
-                return ProtocolError("ACCESS_DENIED", "Bluetooth access was denied")
-            if "unavailable" in message:
-                return ProtocolError("BLUETOOTH_UNAVAILABLE", "Bluetooth RFCOMM is unavailable", retryable=True)
-            if "lost" in message or "closed" in message:
-                return ProtocolError("DEVICE_LOST", "The headset connection was lost", retryable=True)
-            return ProtocolError("CONNECTION_FAILED", "Could not connect to the headset", retryable=True)
+            code = getattr(exc, "code", "CONNECTION_FAILED")
+            messages = {
+                "ACCESS_DENIED": "Bluetooth access was denied",
+                "BLUETOOTH_UNAVAILABLE": "Bluetooth RFCOMM is unavailable",
+                "BLUETOOTH_DISABLED": "Turn on the Windows Bluetooth radio and try again",
+                "DEVICE_NOT_FOUND": "The paired headset is powered off or out of range",
+                "SERVICE_NOT_FOUND": "The headset rejected every discovered BMAP RFCOMM channel",
+                "DEVICE_LOST": "The headset connection was lost",
+                "UNSUPPORTED_DEVICE": "The selected device cannot be validated as BMAP-compatible",
+            }
+            if code not in messages:
+                code = "CONNECTION_FAILED"
+            return ProtocolError(
+                code, messages.get(code, "Could not connect to the headset"),
+                retryable=code != "ACCESS_DENIED",
+                details={"rfcomm_channel": exc.channel} if exc.channel is not None else None,
+            )
         if isinstance(exc, BluetoothDiscoveryError):
             return ProtocolError(exc.code, str(exc), retryable=exc.code != "ACCESS_DENIED")
         if isinstance(exc, ValueError):

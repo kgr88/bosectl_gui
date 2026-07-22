@@ -49,6 +49,7 @@ The Tauri host emits sanitized events to the renderer as `bose://device-event`.
 | `connect` | `{target: ConnectionTarget}` | `DeviceSnapshot` | `connect_device` |
 | `disconnect` | `{}` | `{ok: true}` | `disconnect_device` |
 | `get_snapshot` | `{}` | `DeviceSnapshot` | `get_device_snapshot` |
+| `poll_snapshot` | `{generation, fields}` | `DeviceSnapshot` | `poll_device_snapshot` |
 | `set_noise_control` | `{generation, kind, value}` | `DeviceSnapshot` | `set_noise_control` |
 | `set_eq` | `{generation, bass, mid, treble}` | `DeviceSnapshot` | `set_equalizer` |
 | `set_setting` | `{generation, key, value}` | `DeviceSnapshot` | `set_device_setting` |
@@ -64,6 +65,10 @@ The Tauri host emits sanitized events to the renderer as `bose://device-event`.
 `{"kind":"manual","address":"AA:BB:CC:DD:EE:FF","device_type":"qc35"}`.
 The only initial manual device types are `qc35` and `qc_ultra2`.
 
+`poll_snapshot.fields` is a non-empty unique subset of `battery` and
+`noise_control`. It exists for visible-window status polling and must not become
+a generic feature-read escape hatch.
+
 All device-mutating operations and profile reads carry the last observed
 connection `generation`. The backend rejects obsolete work with
 `STALE_GENERATION`. Each successful connection increments `generation`; every
@@ -75,11 +80,14 @@ snapshots by `(generation, revision)` and ignore older pairs.
 `DeviceSnapshot` contains:
 
 - nullable identity, battery, and firmware;
-- connection state and nullable reason;
+- connection state, nullable reason, and the validated RFCOMM channel;
 - capability descriptions for noise control, EQ bands, settings, profiles, and
   pairing/power actions;
 - current noise-control, EQ, setting, and profile values; and
 - non-negative `generation` and `revision` integers.
+
+Connected identity also carries the resolved `device_type`, allowing a recreated
+WebView to retain a reconnect target without inferring behavior from product text.
 
 Connection states are `disconnected`, `discovering`, `connecting`, `connected`,
 `reconnecting`, `disconnecting`, and `error`.

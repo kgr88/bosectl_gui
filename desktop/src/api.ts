@@ -9,6 +9,7 @@ import {
   type DiscoveredDevice,
   type ProfileInput,
   type ProfileList,
+  type PollField,
   type SetEqRequest,
   type SetNoiseControlRequest,
   type SetSettingRequest,
@@ -26,6 +27,8 @@ export interface BoseApi {
   connect(target: ConnectionTarget): Promise<DeviceSnapshot>;
   disconnect(): Promise<void>;
   refresh(): Promise<DeviceSnapshot>;
+  currentSnapshot(): Promise<DeviceSnapshot | null>;
+  poll(generation: number, fields: PollField[]): Promise<DeviceSnapshot>;
   setNoiseControl(request: SetNoiseControlRequest): Promise<DeviceSnapshot>;
   setEq(request: SetEqRequest): Promise<DeviceSnapshot>;
   setSetting(request: SetSettingRequest): Promise<DeviceSnapshot>;
@@ -69,6 +72,16 @@ const tauriApi: BoseApi = {
   },
 
   refresh: () => snapshotCommand("get_device_snapshot"),
+  async currentSnapshot() {
+    const result: unknown = await invoke("get_current_device_snapshot");
+    if (result !== null && !isDeviceSnapshot(result)) {
+      throw boundaryError("get_current_device_snapshot returned invalid data");
+    }
+    return result;
+  },
+  poll: (generation, fields) => snapshotCommand("poll_device_snapshot", {
+    request: { generation, fields },
+  }),
   setNoiseControl: (request) => snapshotCommand("set_noise_control", { request }),
   setEq: (request) => snapshotCommand("set_equalizer", { request }),
   setSetting: (request) => snapshotCommand("set_device_setting", { request }),

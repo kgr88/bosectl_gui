@@ -16,7 +16,7 @@ Usage:
 
 from .connection import BmapConnection
 from .transport import RfcommTransport
-from .discovery import find_bmap_device
+from .discovery import find_bmap_device, resolve_rfcomm_channels
 from .devices import DEVICES, get_device
 from .catalog import (
     BOSE_USB_VID, BMAP_UUID, BoseDevice, CATALOG,
@@ -29,11 +29,12 @@ from .errors import (
 )
 from .types import DeviceStatus, ModeConfig, EqBand, ButtonMapping, BmapResponse
 from .protocol import bmap_packet, parse_response, parse_all_responses
+from .constants import OP_ERROR, OP_GET, OP_STATUS
 
 __version__ = "0.3.0"
 
 
-def connect(mac=None, device_type=None, transport_factory=None):
+def connect(mac=None, device_type=None, transport_factory=None, channel_resolver=None):
     """Connect to a BMAP device.
 
     Args:
@@ -65,26 +66,62 @@ def connect(mac=None, device_type=None, transport_factory=None):
         )
 
     device = get_device(device_type)
-    channels = getattr(
-        device, "RFCOMM_CHANNELS", (getattr(device, "RFCOMM_CHANNEL", 2),)
-    )
+    channel_resolver = channel_resolver or resolve_rfcomm_channels
+    resolved_channels = channel_resolver(mac)
+    channels = _ordered_rfcomm_channels(device, resolved_channels)
     transport_factory = transport_factory or RfcommTransport
     last_error = None
     for channel in channels:
         transport = transport_factory(mac, channel=channel)
         try:
             transport.connect()
-            break
-        except BmapConnectionError as exc:
+            # Some devices require an init packet before responding.
+            init = getattr(device, "INIT_PACKET", None)
+            if init:
+                fblock, func = init
+                transport.send_recv(bmap_packet(fblock, func, OP_GET))
+            _validate_bmap_endpoint(transport, device)
+            return BmapConnection(transport, device)
+        except BmapAuthError:
+            transport.close()
+            raise
+        except (BmapConnectionError, BmapTimeoutError) as exc:
             last_error = exc
             transport.close()
-    else:
-        raise last_error
+    raise last_error
 
-    # Some devices require an init packet before responding.
-    init = getattr(device, "INIT_PACKET", None)
-    if init:
-        fblock, func = init
-        transport.send_recv(bmap_packet(fblock, func, 1))  # GET
 
-    return BmapConnection(transport, device)
+def _ordered_rfcomm_channels(device, resolved_channels=()):
+    """Put live SDP results before unique catalog compatibility fallbacks."""
+    catalog_channels = getattr(
+        device, "RFCOMM_CHANNELS", (getattr(device, "RFCOMM_CHANNEL", 2),)
+    )
+    ordered = []
+    for channel in tuple(resolved_channels) + tuple(catalog_channels):
+        if isinstance(channel, int) and 1 <= channel <= 30 and channel not in ordered:
+            ordered.append(channel)
+    return tuple(ordered)
+
+
+def _validate_bmap_endpoint(transport, device):
+    """Require a matching, well-formed read response before accepting a port."""
+    feature = device.FEATURES.get("battery")
+    if feature is None:
+        raise BmapConnectionError(
+            "Device definition has no safe endpoint validation read",
+            code="UNSUPPORTED_DEVICE", channel=transport.channel,
+        )
+    fblock, func = feature["addr"]
+    response = parse_response(transport.send_recv(bmap_packet(fblock, func, OP_GET)))
+    if response is None or response.fblock != fblock or response.func != func:
+        raise BmapConnectionError(
+            "RFCOMM channel %s did not return a BMAP response" % transport.channel,
+            code="SERVICE_NOT_FOUND", channel=transport.channel,
+        )
+    if response.op == OP_ERROR and response.payload and response.payload[0] == 5:
+        raise BmapAuthError("The BMAP service requires device authentication")
+    if response.op != OP_STATUS or not response.payload:
+        raise BmapConnectionError(
+            "RFCOMM channel %s did not validate as the BMAP service" % transport.channel,
+            code="SERVICE_NOT_FOUND", channel=transport.channel,
+        )

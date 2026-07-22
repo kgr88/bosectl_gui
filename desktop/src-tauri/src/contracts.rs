@@ -117,6 +117,7 @@ pub struct DeviceIdentity {
     pub name: String,
     pub model: String,
     pub product_id: Option<u16>,
+    pub device_type: String,
     pub address: Option<String>,
 }
 
@@ -135,6 +136,7 @@ pub struct FirmwareInfo {
 pub struct ConnectionStatus {
     pub state: ConnectionState,
     pub reason: Option<String>,
+    pub rfcomm_channel: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -230,10 +232,12 @@ pub struct DeviceSnapshot {
 impl DeviceSnapshot {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
         if self.battery.as_ref().is_some_and(|battery| battery.percent > 100)
+            || self.connection.rfcomm_channel.is_some_and(|channel| !(1..=30).contains(&channel))
             || self.identity.as_ref().is_some_and(|identity| {
                 !valid_text(&identity.device_id, 256)
                     || !valid_text(&identity.name, 256)
                     || !valid_text(&identity.model, 256)
+                    || !matches!(identity.device_type.as_str(), "qc_ultra2" | "qc35")
                     || identity.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
             })
             || self.capabilities.equalizer.iter().any(|band| band.minimum > band.maximum || band.step == 0)
@@ -356,6 +360,32 @@ pub struct GenerationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PollField {
+    Battery,
+    NoiseControl,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PollSnapshotRequest {
+    pub generation: u64,
+    pub fields: Vec<PollField>,
+}
+
+impl PollSnapshotRequest {
+    pub fn validate(&self) -> Result<(), ApiError> {
+        if self.fields.is_empty()
+            || self.fields.len() > 2
+            || (self.fields.len() == 2 && self.fields[0] == self.fields[1])
+        {
+            Err(ApiError::invalid("poll fields are invalid"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileInput {
     pub profile_id: Option<String>,
     pub name: String,
@@ -421,6 +451,7 @@ impl DiscoverResult {
                 || !valid_text(&device.name, 256)
                 || device.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
                 || device.device_type.as_ref().is_some_and(|kind| !matches!(kind.as_str(), "qc_ultra2" | "qc35"))
+                || device.rfcomm_channel.is_some_and(|channel| !(1..=30).contains(&channel))
         }) {
             Err(ApiError::backend_crashed("The backend returned invalid discovery data"))
         } else {
@@ -521,6 +552,15 @@ mod tests {
             value: NoiseControlInput::Text("high".into()),
         };
         assert!(request.validate().is_err());
+    }
+
+    #[test]
+    fn selective_poll_rejects_duplicate_fields() {
+        let request = PollSnapshotRequest {
+            generation: 1,
+            fields: vec![PollField::Battery, PollField::Battery],
+        };
+        assert_eq!(request.validate().unwrap_err().code, ErrorCode::InvalidParams);
     }
 
 }

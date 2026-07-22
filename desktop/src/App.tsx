@@ -46,6 +46,21 @@ export default function App() {
     return () => { active = false; unlisten?.(); };
   }, [reportError]);
 
+  useEffect(() => {
+    let active = true;
+    void api.currentSnapshot().then((restored) => {
+      if (!active || !restored) return;
+      const identity = restored.identity;
+      if (identity?.address) {
+        lastTarget.current = {
+          kind: "manual", address: identity.address, device_type: identity.device_type,
+        };
+      }
+      acceptSnapshot(restored);
+    }).catch((error: unknown) => { if (active) reportError(error); });
+    return () => { active = false; };
+  }, [acceptSnapshot, reportError]);
+
   const refresh = useCallback(async (visibleBusy = true) => {
     if (refreshing.current) return;
     refreshing.current = true;
@@ -55,13 +70,30 @@ export default function App() {
     finally { refreshing.current = false; if (visibleBusy) setBusy(false); }
   }, [acceptSnapshot, reportError]);
 
+  const generation = state.snapshot?.generation;
   useEffect(() => {
-    if (state.connection !== "connected") return;
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(false); };
+    if (state.connection !== "connected" || generation === undefined) return;
+    let pollCount = 0;
+    const poll = async (includeBattery = false) => {
+      if (document.visibilityState !== "visible" || refreshing.current) return;
+      refreshing.current = true;
+      try {
+        acceptSnapshot(await api.poll(
+          generation,
+          includeBattery ? ["noise_control", "battery"] : ["noise_control"],
+        ));
+        setLocalError(null);
+      } catch (error) { reportError(error); }
+      finally { refreshing.current = false; }
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") void poll(true); };
     document.addEventListener("visibilitychange", onVisible);
-    const poll = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(false); }, 45_000);
-    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(poll); };
-  }, [state.connection, refresh]);
+    const timer = window.setInterval(() => {
+      pollCount += 1;
+      void poll(pollCount % 6 === 0);
+    }, 8_000);
+    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
+  }, [state.connection, generation, acceptSnapshot, reportError]);
 
   useEffect(() => {
     const error = localError ?? state.error;
