@@ -1,6 +1,6 @@
 [package]
 name = "bosectl-gui"
-version = "0.1.0"
+version = "0.3.0"
 description = "Windows controls for BMAP-compatible Bose headsets"
 authors = ["bosectl contributors"]
 edition = "2021"

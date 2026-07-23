@@ -1,7 +1,9 @@
 use std::{
     collections::HashMap,
+    fs::{self, OpenOptions},
     io::{self, BufRead, BufReader, Write},
-    process::{Child, ChildStdin, Command, Stdio},
+    path::PathBuf,
+    process::{Child, ChildStderr, ChildStdin, Command, Stdio},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc, Arc, Mutex,
@@ -16,10 +18,12 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     contracts::{ApiError, BackendInfo, ConnectionState, DeviceEvent, ErrorCode, PROTOCOL_VERSION},
+    lifecycle::tray_image,
     state::AppState,
 };
 
 const MAX_LINE_BYTES: usize = 64 * 1024;
+const MAX_LOG_BYTES: u64 = 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(12);
 const SLOW_REQUEST_TIMEOUT: Duration = Duration::from_secs(45);
 type PendingSender = mpsc::Sender<Result<Value, ApiError>>;
@@ -139,7 +143,7 @@ impl BackendClient {
         }
         self.stop_process();
         self.inner.stopping.store(false, Ordering::Release);
-        let (child, stdin, stdout) = spawn_backend()?;
+        let (child, stdin, stdout, stderr) = spawn_backend()?;
         let stdin = Arc::new(Mutex::new(stdin));
         self.inner.healthy.store(true, Ordering::Release);
         {
@@ -150,6 +154,18 @@ impl BackendClient {
         thread::Builder::new()
             .name("bosectl-backend-reader".into())
             .spawn(move || read_backend(inner, stdout))
+            .map_err(|_| ApiError::backend_unavailable())?;
+        let log_path = self
+            .inner
+            .app
+            .lock()
+            .ok()
+            .and_then(|app| app.clone())
+            .and_then(|app| app.path().app_log_dir().ok())
+            .map(|directory| directory.join("backend.log"));
+        thread::Builder::new()
+            .name("bosectl-backend-log".into())
+            .spawn(move || drain_backend_log(stderr, log_path))
             .map_err(|_| ApiError::backend_unavailable())?;
 
         let hello: BackendInfo = match self.request_running::<_, BackendInfo>("hello", &json!({})) {
@@ -264,8 +280,14 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
     }
 }
 
+enum TrayIconUpdate {
+    Keep,
+    Default,
+    Battery(u8),
+}
+
 fn update_tray_status(app: &AppHandle, event: &DeviceEvent) {
-    let tooltip = match event {
+    let (tooltip, icon_update) = match event {
         DeviceEvent::SnapshotChanged { data }
             if data.connection.state == ConnectionState::Connected =>
         {
@@ -275,23 +297,50 @@ fn update_tray_status(app: &AppHandle, event: &DeviceEvent) {
                 .as_ref()
                 .map(|battery| format!(" · {}%", battery.percent))
                 .unwrap_or_default();
-            format!("bosectl · {name}{battery}")
+            let icon_update = data
+                .battery
+                .as_ref()
+                .map_or(TrayIconUpdate::Default, |battery| {
+                    TrayIconUpdate::Battery(battery.percent)
+                });
+            (format!("bosectl · {name}{battery}"), icon_update)
         }
         DeviceEvent::ConnectionChanged { data } => match data.state {
-            ConnectionState::Discovering => "bosectl · Discovering…".into(),
-            ConnectionState::Connecting | ConnectionState::Reconnecting => {
-                "bosectl · Connecting…".into()
+            ConnectionState::Discovering => {
+                ("bosectl · Discovering…".into(), TrayIconUpdate::Default)
             }
-            ConnectionState::Disconnecting => "bosectl · Disconnecting…".into(),
-            ConnectionState::Disconnected => "bosectl · Disconnected".into(),
-            ConnectionState::Error => "bosectl · Connection error".into(),
-            ConnectionState::Connected => "bosectl · Connected".into(),
+            ConnectionState::Connecting | ConnectionState::Reconnecting => {
+                ("bosectl · Connecting…".into(), TrayIconUpdate::Default)
+            }
+            ConnectionState::Disconnecting => {
+                ("bosectl · Disconnecting…".into(), TrayIconUpdate::Default)
+            }
+            ConnectionState::Disconnected => {
+                ("bosectl · Disconnected".into(), TrayIconUpdate::Default)
+            }
+            ConnectionState::Error => {
+                ("bosectl · Connection error".into(), TrayIconUpdate::Default)
+            }
+            ConnectionState::Connected => {
+                ("bosectl · Connected".into(), TrayIconUpdate::Keep)
+            }
         },
-        DeviceEvent::BackendError { .. } => "bosectl · Backend error".into(),
-        DeviceEvent::SnapshotChanged { .. } => "bosectl".into(),
+        DeviceEvent::BackendError { .. } => {
+            ("bosectl · Backend error".into(), TrayIconUpdate::Default)
+        }
+        DeviceEvent::SnapshotChanged { .. } => ("bosectl".into(), TrayIconUpdate::Default),
     };
     if let Some(tray) = app.tray_by_id("main-tray") {
         let _ = tray.set_tooltip(Some(tooltip));
+        match icon_update {
+            TrayIconUpdate::Keep => {}
+            TrayIconUpdate::Default => {
+                let _ = tray.set_icon(Some(tray_image(None)));
+            }
+            TrayIconUpdate::Battery(percent) => {
+                let _ = tray.set_icon(Some(tray_image(Some(percent))));
+            }
+        }
     }
 }
 
@@ -356,8 +405,86 @@ fn fail_pending(inner: &ClientInner, error: ApiError) {
     }
 }
 
+fn drain_backend_log(stderr: ChildStderr, log_path: Option<PathBuf>) {
+    let mut log = log_path.and_then(open_backend_log);
+    let mut log_size = log
+        .as_ref()
+        .and_then(|file| file.metadata().ok())
+        .map_or(0, |metadata| metadata.len());
+    let mut reader = BufReader::new(stderr);
+    loop {
+        let line = match read_capped_line(&mut reader) {
+            Ok(Some(line)) => line,
+            Ok(None) => break,
+            Err(_) => {
+                if let Some(log) = log.as_mut() {
+                    let _ = writeln!(log, "backend log line discarded");
+                }
+                continue;
+            }
+        };
+        if log.is_some() {
+            let line = redact_sensitive(&line);
+            let line = line.trim_end_matches(['\r', '\n']);
+            let entry_bytes = line.len() as u64 + 2;
+            if log_size.saturating_add(entry_bytes) <= MAX_LOG_BYTES {
+                if let Some(file) = log.as_mut() {
+                    let _ = writeln!(file, "{line}");
+                }
+                log_size += entry_bytes;
+            } else {
+                log = None;
+            }
+        }
+    }
+}
+
+fn open_backend_log(path: PathBuf) -> Option<std::fs::File> {
+    let directory = path.parent()?;
+    fs::create_dir_all(directory).ok()?;
+    if path.metadata().is_ok_and(|metadata| metadata.len() >= MAX_LOG_BYTES) {
+        let previous = directory.join("backend.previous.log");
+        let _ = fs::remove_file(&previous);
+        let _ = fs::rename(&path, previous);
+    }
+    OpenOptions::new().create(true).append(true).open(path).ok()
+}
+
+fn redact_sensitive(line: &[u8]) -> String {
+    const REDACTED: &[u8] = b"[redacted Bluetooth address]";
+    let mut output = Vec::with_capacity(line.len());
+    let mut index = 0;
+    while index < line.len() {
+        if is_bluetooth_address_at(line, index) {
+            output.extend_from_slice(REDACTED);
+            index += 17;
+        } else {
+            output.push(line[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8_lossy(&output).into_owned()
+}
+
+fn is_bluetooth_address_at(value: &[u8], start: usize) -> bool {
+    if start + 17 > value.len() || (start > 0 && value[start - 1].is_ascii_hexdigit()) {
+        return false;
+    }
+    for offset in 0..17 {
+        let byte = value[start + offset];
+        if (offset + 1) % 3 == 0 {
+            if byte != b':' {
+                return false;
+            }
+        } else if !byte.is_ascii_hexdigit() {
+            return false;
+        }
+    }
+    start + 17 == value.len() || !value[start + 17].is_ascii_hexdigit()
+}
+
 #[cfg(debug_assertions)]
-fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout), ApiError> {
+fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError> {
     let python_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../python");
     let mut command = if let Some(executable) = std::env::var_os("PYBMAP_PYTHON") {
         Command::new(executable)
@@ -369,7 +496,7 @@ fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout), Api
 }
 
 #[cfg(not(debug_assertions))]
-fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout), ApiError> {
+fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError> {
     let executable = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(|parent| parent.join("bosectl-backend.exe")))
@@ -377,16 +504,25 @@ fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout), Api
     spawn_command(Command::new(executable))
 }
 
-fn spawn_command(mut command: Command) -> Result<(Child, ChildStdin, std::process::ChildStdout), ApiError> {
+fn spawn_command(
+    mut command: Command,
+) -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|_| ApiError::backend_unavailable())?;
     let stdin = child.stdin.take().ok_or_else(ApiError::backend_unavailable)?;
     let stdout = child.stdout.take().ok_or_else(ApiError::backend_unavailable)?;
-    Ok((child, stdin, stdout))
+    let stderr = child.stderr.take().ok_or_else(ApiError::backend_unavailable)?;
+    Ok((child, stdin, stdout, stderr))
 }
 
 #[cfg(test)]
@@ -436,5 +572,14 @@ mod tests {
         client.inner.pending.lock().unwrap().insert("1".into(), sender);
         read_backend(client.inner.clone(), b"".as_slice());
         assert_eq!(receiver.recv().unwrap().unwrap_err().code, ErrorCode::BackendCrashed);
+    }
+
+    #[test]
+    fn backend_logs_redact_bluetooth_addresses() {
+        assert_eq!(
+            redact_sensitive(b"connection to AA:bb:CC:dd:EE:fF failed\n"),
+            "connection to [redacted Bluetooth address] failed\n"
+        );
+        assert_eq!(redact_sensitive(b"error code 12:34"), "error code 12:34");
     }
 }

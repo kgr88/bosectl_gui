@@ -108,3 +108,27 @@ def test_worker_coalesces_rapid_equalizer_writes_and_answers_every_request():
     assert service.calls[0][1]["bass"] == 3
     assert [response["id"] for response in responses] == ["1", "2", "3"]
     assert all(response["result"]["bass"] == 3 for response in responses)
+
+
+def test_worker_internal_error_log_never_includes_exception_data():
+    class Service:
+        stopping = False
+
+        def handle(self, method, params):
+            raise RuntimeError("device AA:BB:CC:DD:EE:FF packet deadbeef")
+
+        def drain_events(self):
+            return []
+
+    stderr = io.StringIO()
+    stdout = io.StringIO()
+    run(
+        stdin=io.StringIO(request("hello") + "\n"),
+        stdout=stdout,
+        stderr=stderr,
+        service=Service(),
+    )
+
+    assert stderr.getvalue() == "backend internal error: RuntimeError\n"
+    assert "AA:BB:CC:DD:EE:FF" not in stderr.getvalue()
+    assert "deadbeef" not in stderr.getvalue()

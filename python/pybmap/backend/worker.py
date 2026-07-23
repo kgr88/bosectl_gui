@@ -96,8 +96,8 @@ def run(stdin=None, stdout=None, stderr=None, service=None):
             messages = [error_response(
                 item.request_id, exc.code, exc.message, exc.retryable, exc.details
             ) for item in group]
-        except Exception as exc:  # The wire never exposes exception types or traces.
-            print("backend internal error: %s" % exc, file=stderr)
+        except Exception as exc:  # Never log request data, addresses, packets, or traces.
+            print("backend internal error: %s" % type(exc).__name__, file=stderr)
             messages = [error_response(item.request_id, "INTERNAL", "internal backend error") for item in group]
 
         for message in messages:

@@ -1,5 +1,5 @@
-# Release scaffold (final Tauri externalBin wiring is Stage 4). Run from the repository root:
-#   pyinstaller packaging/windows/pyinstaller.spec
+# Run from the repository root with:
+#   python -m PyInstaller --noconfirm --clean packaging/windows/pyinstaller.spec
 from pathlib import Path
 
 repository = Path(SPECPATH).parents[1]
@@ -27,14 +27,17 @@ executable = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=True,
+    icon=str(repository / "desktop" / "src-tauri" / "icons" / "icon.ico"),
+    version=str(repository / "packaging" / "windows" / "backend-version.txt"),
+    contents_directory="bosectl-backend-lib",
 )
 collection = COLLECT(
     executable,
     analysis.binaries,
     analysis.datas,
     strip=False,
-    upx=True,
+    upx=False,
     name="bosectl-backend",
 )

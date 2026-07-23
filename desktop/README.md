@@ -34,7 +34,18 @@ pnpm tauri build
 In development the Rust host launches `python -m pybmap.backend`. Set the fixed
 host-side `PYBMAP_PYTHON` environment variable when `python.exe` is not on PATH.
 The variable is read only by the native host and is never exposed to renderer
-commands. Release-sidecar freezing and installer wiring are Stage 4 work.
+commands.
+
+Release builds freeze and smoke-test the Python backend, stage the target-triple
+sidecar, run the software-only test suites, and create the current-user NSIS
+installer with:
+
+```powershell
+pnpm release:windows
+```
+
+See `../packaging/windows/README.md` for prerequisites, optional certificate
+signing, artifact locations, and the clean-machine release checklist.
 
 From `python/`:
 
