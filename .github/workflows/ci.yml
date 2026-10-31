@@ -10,16 +10,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  PNPM_VERSION: 10.13.1
+  # PR runs supersede each other; push and manual runs each get their own group.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   python:
-    name: Python tests
+    name: Python tests (${{ matrix.python-version }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.12"]
     defaults:
       run:
         working-directory: python
@@ -27,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - run: python -m pip install pytest
       - run: python -m pytest
 
@@ -43,9 +45,9 @@ jobs:
         with:
           node-version: 22
       - run: corepack enable
-      - run: corepack pnpm@${{ env.PNPM_VERSION }} install --frozen-lockfile
-      - run: corepack pnpm@${{ env.PNPM_VERSION }} test
-      - run: corepack pnpm@${{ env.PNPM_VERSION }} build
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm test
+      - run: corepack pnpm build
 
   rust:
     name: Rust tests
@@ -102,7 +104,8 @@ jobs:
           workspaces: desktop/src-tauri
       - run: python -m pip install pyinstaller
       - run: corepack enable
-      - run: corepack pnpm@${{ env.PNPM_VERSION }} --dir desktop install --frozen-lockfile
+      - run: corepack pnpm install --frozen-lockfile
+        working-directory: desktop
       - name: Build the frozen backend and NSIS installer
         shell: pwsh
         run: ./packaging/windows/build-release.ps1 -PythonExecutable python -SkipTests
