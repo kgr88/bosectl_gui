@@ -1,7 +1,7 @@
 # Test Fixtures
 
 Language-agnostic BMAP packet captures and expected parse results.
-Shared across Python, Rust, and C++ test suites.
+Shared across the Python test suites.
 
 ## Structure
 

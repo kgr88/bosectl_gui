@@ -10,7 +10,6 @@ body:
         - New device support
         - New feature for existing device
         - Library API improvement
-        - CLI improvement
         - Documentation
     validations:
       required: true

@@ -291,7 +291,7 @@ without any authentication.
 
 ## Device Catalog
 
-The catalog module (`catalog.py` / `catalog.rs` / `catalog.h`) is the
+The catalog module (`catalog.py`) is the
 single source of truth for all known Bose BMAP devices. It's sourced from
 Bose's firmware manifest at `downloads.bose.com/lookup.xml`.
 
@@ -355,7 +355,7 @@ a default config since they don't have a tested implementation yet.
 
 ### Known Unsupported (Future Targets)
 
-See `catalog.py` / `catalog.rs` / `catalog.h` for the full device
+See `catalog.py` for the full device
 list. Entries with `config=None` are recognized but not yet
 implemented.
 
@@ -392,6 +392,12 @@ pybmap/
 ├── constants.py         # Operators, error codes, button/action/language tables
 ├── types.py             # NamedTuples (BmapResponse, ModeConfig, ButtonMapping, etc.)
 ├── errors.py            # Exception hierarchy
+├── backend/             # Sidecar for the desktop app (python -m pybmap.backend)
+│   ├── __main__.py
+│   ├── protocol.py
+│   ├── service.py
+│   ├── snapshots.py
+│   └── worker.py
 └── devices/
     ├── __init__.py      # Device registry (DEVICES dict, get_device())
     ├── parsers.py       # Shared parser/builder functions
