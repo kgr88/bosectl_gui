@@ -4,7 +4,6 @@ import json
 import re
 from collections import namedtuple
 
-
 PROTOCOL_VERSION = 3
 MAX_LINE_BYTES = 64 * 1024
 MAX_REQUEST_ID_LENGTH = 128
@@ -227,8 +226,8 @@ def parse_request_line(line):
     if isinstance(line, bytes):
         try:
             text = line.decode("utf-8")
-        except UnicodeDecodeError:
-            raise ProtocolError("INVALID_REQUEST", "request must be UTF-8")
+        except UnicodeDecodeError as exc:
+            raise ProtocolError("INVALID_REQUEST", "request must be UTF-8") from exc
     else:
         text = line
     if not isinstance(text, str):
@@ -242,8 +241,8 @@ def parse_request_line(line):
                 ValueError("non-finite JSON number: %s" % value)
             ),
         )
-    except (TypeError, ValueError):
-        raise ProtocolError("INVALID_REQUEST", "request is not valid JSON")
+    except (TypeError, ValueError) as exc:
+        raise ProtocolError("INVALID_REQUEST", "request is not valid JSON") from exc
     if not isinstance(message, dict):
         raise ProtocolError("INVALID_REQUEST", "request must be a JSON object")
 

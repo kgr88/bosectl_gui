@@ -1,28 +1,28 @@
 """Tests for device-specific parsers using real captured data."""
 
+import pytest
+
 from pybmap.devices.parsers import (
+    build_buttons,
+    build_eq_band,
+    build_mode_config_40,
+    build_sidetone,
+    build_toggle,
+    build_voice_prompts,
+    build_voice_prompts_ultra,
     parse_battery,
-    parse_firmware,
-    parse_product_name,
+    parse_bool,
+    parse_buttons,
     parse_cnc,
     parse_eq,
-    parse_buttons,
+    parse_firmware,
+    parse_mode_config_48,
     parse_multipoint,
-    parse_bool,
+    parse_product_name,
     parse_sidetone,
     parse_voice_prompts,
     parse_voice_prompts_ultra,
-    parse_mode_config_48,
-    build_mode_config_40,
-    build_eq_band,
-    build_toggle,
-    build_sidetone,
-    build_voice_prompts,
-    build_voice_prompts_ultra,
-    build_buttons,
 )
-from pybmap.types import ModeConfig, EqBand, ButtonMapping
-
 
 # ── Test data from real QC Ultra 2 captures ──────────────────────────────────
 # These hex values come from fixtures/packets/qc-ultra-2/ capture files.
@@ -35,7 +35,7 @@ class TestParseBattery:
         assert parse_battery(payload) == 0x50  # 80%
 
     def test_empty(self):
-        assert parse_battery(bytes()) is None
+        assert parse_battery(b"") is None
 
 
 class TestParseFirmware:
@@ -61,7 +61,7 @@ class TestParseCNC:
         assert maximum == 10  # max is 0x0b - 1 = 10
 
     def test_short(self):
-        assert parse_cnc(bytes()) == (0, 10)
+        assert parse_cnc(b"") == (0, 10)
 
 
 class TestParseEQ:
@@ -134,25 +134,16 @@ class TestBuildButtons:
         assert payload == bytes([0x80, 0x09, 0x0E])
 
     def test_unknown_button_raises(self):
-        try:
+        with pytest.raises(ValueError):
             build_buttons("Nonexistent", 4, 2)
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_unknown_event_raises(self):
-        try:
+        with pytest.raises(ValueError):
             build_buttons(0x10, "fake_event", 2)
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_unknown_action_raises(self):
-        try:
+        with pytest.raises(ValueError):
             build_buttons(0x10, 4, "FakeAction")
-            assert False, "Should have raised ValueError"
-        except ValueError:
-            pass
 
     def test_roundtrip(self):
         """Build a payload, parse it back."""
@@ -175,7 +166,7 @@ class TestParseMultipoint:
         assert parse_multipoint(bytes([0x01])) is False  # bit 1 not set
 
     def test_empty(self):
-        assert parse_multipoint(bytes()) is False
+        assert parse_multipoint(b"") is False
 
 
 class TestParseBool:
@@ -186,7 +177,7 @@ class TestParseBool:
         assert parse_bool(bytes([0x00])) is False
 
     def test_empty(self):
-        assert parse_bool(bytes()) is False
+        assert parse_bool(b"") is False
 
 
 class TestParseSidetone:

@@ -1,7 +1,8 @@
 """Platform discovery for paired BMAP devices.
 
 The backend uses the documented Windows Bluetooth desktop API through
-``ctypes``, so it has no optional runtime dependency.  Discovery never guesses an unknown device configuration.
+``ctypes``, so it has no optional runtime dependency.  Discovery never guesses an
+unknown device configuration.
 """
 
 import ctypes
@@ -12,8 +13,7 @@ import uuid
 from collections import namedtuple
 from ctypes import wintypes
 
-from .catalog import BMAP_UUID, lookup_device
-
+from .catalog import BMAP_UUID
 
 DiscoveredDevice = namedtuple(
     "DiscoveredDevice",

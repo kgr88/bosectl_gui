@@ -6,6 +6,7 @@ from collections import deque
 from queue import Empty, Queue
 
 from .protocol import (
+    MAX_LINE_BYTES,
     ProtocolError,
     encode_message,
     error_response,
@@ -14,8 +15,6 @@ from .protocol import (
     success_response,
 )
 from .service import BackendService
-from .protocol import MAX_LINE_BYTES
-
 
 COALESCE_SECONDS = 0.025
 _EOF = object()

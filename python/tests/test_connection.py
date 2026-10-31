@@ -1,11 +1,12 @@
 """Tests for BmapConnection using a mock transport."""
 
 import pytest
+
 from pybmap.connection import BmapConnection
-from pybmap.protocol import bmap_packet
-from pybmap.constants import OP_GET, OP_SETGET, OP_STATUS, OP_RESULT, OP_ERROR
-from pybmap.errors import BmapError, BmapAuthError, BmapDeviceError
+from pybmap.constants import OP_ERROR, OP_SETGET, OP_STATUS
 from pybmap.devices import qc35, qc_ultra2
+from pybmap.errors import BmapAuthError, BmapDeviceError, BmapError
+from pybmap.protocol import bmap_packet
 
 
 class MockTransport:

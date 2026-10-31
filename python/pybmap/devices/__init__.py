@@ -1,7 +1,6 @@
 """Device registry for BMAP-capable devices."""
 
-from . import qc_ultra2
-from . import qc35
+from . import qc35, qc_ultra2
 
 # Registry of supported devices keyed by type string.
 DEVICES = {

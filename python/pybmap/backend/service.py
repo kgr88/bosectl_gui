@@ -36,12 +36,11 @@ from .snapshots import (
     to_wire,
 )
 
-
 SPATIAL_TO_WIRE = {0: "off", 1: "room", 2: "motion"}
 SPATIAL_FROM_WIRE = {value: key for key, value in SPATIAL_TO_WIRE.items()}
 
 
-class BackendService(object):
+class BackendService:
     """Own exactly one connection; all methods are called by one worker thread."""
 
     def __init__(self, connector=None, discoverer=None):
@@ -114,7 +113,7 @@ class BackendService(object):
         except Exception as exc:
             translated = self._translate_error(exc)
             if translated is not None:
-                raise translated
+                raise translated from exc
             raise
 
     def _handle_hello(self, params):
@@ -478,11 +477,17 @@ class BackendService(object):
             messages = {
                 "ACCESS_DENIED": "Bluetooth access was denied",
                 "BLUETOOTH_UNAVAILABLE": "Bluetooth RFCOMM is unavailable",
-                "BLUETOOTH_DISABLED": "Turn on the Windows Bluetooth radio and try again",
+                "BLUETOOTH_DISABLED": (
+                    "Turn on the Windows Bluetooth radio and try again"
+                ),
                 "DEVICE_NOT_FOUND": "The paired headset is powered off or out of range",
-                "SERVICE_NOT_FOUND": "The headset rejected every discovered BMAP RFCOMM channel",
+                "SERVICE_NOT_FOUND": (
+                    "The headset rejected every discovered BMAP RFCOMM channel"
+                ),
                 "DEVICE_LOST": "The headset connection was lost",
-                "UNSUPPORTED_DEVICE": "The selected device cannot be validated as BMAP-compatible",
+                "UNSUPPORTED_DEVICE": (
+                    "The selected device cannot be validated as BMAP-compatible"
+                ),
             }
             if code not in messages:
                 code = "CONNECTION_FAILED"

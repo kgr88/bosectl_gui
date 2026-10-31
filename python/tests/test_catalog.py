@@ -3,9 +3,9 @@
 from pybmap.catalog import (
     BOSE_USB_VID,
     CATALOG,
+    is_supported,
     lookup_device,
     supported_devices,
-    is_supported,
     usb_ids,
 )
 

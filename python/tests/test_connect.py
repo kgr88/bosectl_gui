@@ -3,7 +3,6 @@
 import pybmap
 from pybmap.errors import BmapConnectionError
 
-
 VALID_BATTERY_RESPONSE = b"\x02\x02\x03\x04\x50\xff\xff\x00"
 
 

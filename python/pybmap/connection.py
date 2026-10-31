@@ -12,20 +12,19 @@ Usage:
 """
 
 from .constants import (
+    OP_ERROR,
     OP_GET,
+    OP_RESULT,
     OP_SETGET,
     OP_START,
     OP_STATUS,
-    OP_RESULT,
-    OP_ERROR,
-    OP_PROCESSING,
     SIDETONE_NAMES,
     SIDETONE_VALUES,
     SPATIAL_VALUES,
     VOICE_LANGUAGES,
 )
-from .protocol import bmap_packet, parse_response, parse_all_responses, fmt_response
-from .errors import BmapError, BmapAuthError, BmapDeviceError
+from .errors import BmapAuthError, BmapDeviceError, BmapError
+from .protocol import bmap_packet, fmt_response, parse_all_responses, parse_response
 from .types import DeviceStatus
 
 
@@ -77,7 +76,7 @@ class BmapConnection:
         resp = self._transport.send_recv(bmap_packet(fblock, func, OP_GET))
         parsed = parse_response(resp)
         if parsed is None:
-            return bytes()
+            return b""
         if parsed.op == OP_ERROR:
             self._raise_error(parsed)
         return parsed.payload
@@ -564,8 +563,8 @@ class BmapConnection:
         else:
             try:
                 slot = int(profile_id)
-            except (TypeError, ValueError):
-                raise ValueError("profile_id must be a numeric slot")
+            except (TypeError, ValueError) as exc:
+                raise ValueError("profile_id must be a numeric slot") from exc
             if slot not in self._device.EDITABLE_SLOTS:
                 raise BmapError("Profile slot is not editable")
             config = modes.get(slot)
@@ -586,8 +585,8 @@ class BmapConnection:
         """Delete an editable profile by stable numeric slot identifier."""
         try:
             slot = int(profile_id)
-        except (TypeError, ValueError):
-            raise ValueError("profile_id must be a numeric slot")
+        except (TypeError, ValueError) as exc:
+            raise ValueError("profile_id must be a numeric slot") from exc
         modes = self.modes()
         config = modes.get(slot)
         if (

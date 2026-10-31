@@ -5,12 +5,11 @@ Usage (from python/tools): python bmap-capture.py AA:BB:CC:DD:EE:FF
 """
 
 import argparse
-import socket
-import time
 import json
 import os
 import re
-import sys
+import socket
+import time
 
 CHANNEL = 2
 CAPTURE_DIR = os.path.normpath(
@@ -107,7 +106,7 @@ def read_all(sock):
             payload = resp[4 : 4 + rlen]
             if rop != 4:  # not an error
                 state[(block, func)] = payload.hex()
-        except socket.timeout:
+        except TimeoutError:
             pass
         except (BrokenPipeError, ConnectionResetError, OSError):
             return state  # connection lost, return what we have
@@ -150,7 +149,7 @@ def main(mac):
         filename = f"{ts}_{slug}.json"
         filepath = os.path.join(CAPTURE_DIR, filename)
 
-        print(f"\nConnecting to Fargo...", end=" ", flush=True)
+        print("\nConnecting to Fargo...", end=" ", flush=True)
         try:
             sock = connect(mac)
         except Exception as e:
@@ -222,7 +221,8 @@ def main(mac):
                         all_changes.add(key)
             if all_changes:
                 print(
-                    f"  (but {len(all_changes)} transient changes seen in intermediate snapshots)"
+                    f"  (but {len(all_changes)} transient changes seen in "
+                    "intermediate snapshots)"
                 )
 
         # Save

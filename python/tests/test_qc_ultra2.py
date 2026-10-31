@@ -1,6 +1,8 @@
 """Tests for QC Ultra 2 device configuration."""
 
-from pybmap.devices import qc_ultra2, DEVICES, get_device
+import pytest
+
+from pybmap.devices import DEVICES, get_device, qc_ultra2
 
 
 class TestDeviceRegistry:
@@ -17,11 +19,8 @@ class TestDeviceRegistry:
     def test_unknown_device(self):
         from pybmap.errors import BmapError
 
-        try:
+        with pytest.raises(BmapError):
             get_device("nonexistent")
-            assert False, "Should have raised BmapError"
-        except BmapError:
-            pass
 
 
 class TestQCUltra2Config:

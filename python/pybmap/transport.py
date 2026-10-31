@@ -106,11 +106,13 @@ class RfcommTransport:
         try:
             self._sock.sendall(packet)
             data = self._recv_frame()
-        except socket.timeout:
+        except TimeoutError as e:
             if self._buffer:
                 self._buffer.clear()
-                raise BmapConnectionError("Device returned a truncated BMAP frame")
-            raise BmapTimeoutError("No response from device")
+                raise BmapConnectionError(
+                    "Device returned a truncated BMAP frame"
+                ) from e
+            raise BmapTimeoutError("No response from device") from e
         except OSError as e:
             raise _translate_socket_error(e, "communicate with device") from e
 
@@ -120,10 +122,12 @@ class RfcommTransport:
             try:
                 while True:
                     data += self._recv_frame()
-            except (socket.timeout, BlockingIOError):
+            except (TimeoutError, BlockingIOError) as e:
                 if self._buffer:
                     self._buffer.clear()
-                    raise BmapConnectionError("Device returned a truncated BMAP frame")
+                    raise BmapConnectionError(
+                        "Device returned a truncated BMAP frame"
+                    ) from e
             except OSError as e:
                 raise _translate_socket_error(e, "drain device responses") from e
             finally:

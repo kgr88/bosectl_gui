@@ -8,7 +8,7 @@ Packet format: [fblock_id, function_id, flags, payload_length, ...payload]
 Flags byte:    (device_id << 6) | (port_num << 4) | (operator & 0x0F)
 """
 
-from .constants import OP_ERROR, OP_NAMES, ERROR_NAMES
+from .constants import ERROR_NAMES, OP_ERROR, OP_NAMES
 from .types import BmapResponse
 
 

@@ -7,7 +7,6 @@ from pybmap.backend.service import BackendService
 from pybmap.discovery import _device_from_name
 from pybmap.errors import BmapConnectionError
 
-
 EqBand = namedtuple("EqBand", ["name", "min_val", "max_val", "current"])
 Audio = namedtuple(
     "Audio", ["cnc_level", "auto_cnc", "spatial", "wind_block", "anc_toggle"]
