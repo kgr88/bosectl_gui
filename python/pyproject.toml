@@ -21,8 +21,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/abock/bose-headphones"
-Repository = "https://github.com/abock/bose-headphones"
+Homepage = "https://github.com/aaronsb/bosectl"
+Repository = "https://github.com/aaronsb/bosectl"
 
 [build-system]
 requires = ["hatchling"]
