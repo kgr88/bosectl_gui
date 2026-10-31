@@ -16,6 +16,13 @@ CHANNEL = 2
 CAPTURE_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "captures")
 )
+MAC_PATTERN = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
+
+
+def mac_address(text):
+    if not MAC_PATTERN.match(text):
+        raise argparse.ArgumentTypeError(f"expected AA:BB:CC:DD:EE:FF, got {text!r}")
+    return text
 
 # All known-responding functions from our scan
 FUNCTIONS = [
@@ -187,5 +194,5 @@ def main(mac):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capture BMAP setting changes.")
-    parser.add_argument("mac", help="Bluetooth address of the headphones, e.g. AA:BB:CC:DD:EE:FF")
+    parser.add_argument("mac", type=mac_address, help="Bluetooth address of the headphones, e.g. AA:BB:CC:DD:EE:FF")
     main(parser.parse_args().mac)
