@@ -1,9 +1,8 @@
 # BMAP Library Architecture
 
-This guide covers the shared architecture of the BMAP protocol libraries
-(Python, Rust, C++). All three implement the same layered design and
-feature-dispatch model. Language-specific details are in
-[Language Implementations](#language-implementations) at the end.
+This guide covers the architecture of the Python BMAP protocol library
+(`pybmap`): its layered design and feature-dispatch model. The module
+layout is in [Python Implementation](#python-implementation) at the end.
 
 ## Overview
 
@@ -99,9 +98,7 @@ sequenceDiagram
 - **Drain mode**: Send packet, collect all responses until 500ms silence — used for commands that return multiple STATUS frames (e.g. `GetAll`)
 - **200ms post-send delay**: Required by the BMAP protocol between send and first recv
 
-The drain interface differs slightly by language: Python uses a boolean
-parameter (`send_recv(packet, drain=True)`), while Rust and C++ have a
-separate method (`send_recv_drain(packet)`).
+Drain mode is a boolean parameter: `send_recv(packet, drain=True)`.
 
 ### Device Config
 
@@ -381,12 +378,9 @@ assigning a different parser function in the config.
 
 ---
 
-## Language Implementations
+## Python Implementation
 
-All three implementations follow the architecture above. The differences
-are in how each language expresses the patterns.
-
-### Python (`python/pybmap/`)
+### Layout (`python/pybmap/`)
 
 ```
 pybmap/
@@ -427,208 +421,20 @@ No abstraction layer — `RfcommTransport` is a concrete class.
 parser tests (parsers are pure functions). Connection tests use a
 `MockTransport` helper.
 
-### Rust (`rust/src/`)
-
-```
-rust/src/
-├── lib.rs               # connect() entry point, public re-exports
-├── catalog.rs           # Device catalog (PIDs, codenames, USB/Modalias IDs)
-├── protocol.rs          # Packet codec, BmapResponse struct
-├── transport.rs         # Transport trait + RfcommTransport (libc sockets)
-├── connection.rs        # BmapConnection<T: Transport> generic struct
-├── discovery.rs         # find_bmap_device() via bluetoothctl
-├── device.rs            # DeviceConfig struct, all parsers/builders
-├── devices.rs           # qc_ultra2() / qc35() factory functions
-├── error.rs             # BmapError enum, BmapResult type alias
-└── main.rs              # CLI binary (bmapctl)
-```
-
-**Device configs** are returned by factory functions (`qc_ultra2() -> DeviceConfig`).
-Features are `Option<Addr>` fields on the struct — `None` means unsupported.
-The compiler enforces that unsupported features can't be called without
-handling the `None` case.
-
-**Feature dispatch** is method-based rather than dict-based. Each
-`BmapConnection` method knows which config field to read:
-```rust
-pub fn anr(&self) -> BmapResult<&'static str> {
-    let addr = self.addr(self.config.anr)?;  // None → Unsupported error
-    let payload = self.get(addr)?;
-    Ok(parse_anr(&payload))
-}
-```
-
-**Transport** is a trait (`Transport`), enabling mock transports in tests:
-```rust
-pub trait Transport {
-    fn send_recv(&self, packet: &[u8]) -> BmapResult<Vec<u8>>;
-    fn send_recv_drain(&self, packet: &[u8]) -> BmapResult<Vec<u8>>;
-}
-```
-
-`BmapConnection<T: Transport>` is generic over the transport, so tests
-use `BmapConnection<MockTransport>` with canned responses.
-
-**Error handling** uses `Result<T, BmapError>` with an enum:
-```rust
-pub enum BmapError {
-    Connection(String),
-    Auth(String),
-    Device { message: String, code: u8 },
-    Timeout(String),
-    NotFound(String),
-    Unsupported(String),
-    InvalidArg(String),
-}
-```
-
-### C++ (`cpp/src/`)
-
-```
-cpp/src/
-├── bmap.h               # connect() function, public header
-├── catalog.h            # Device catalog (PIDs, codenames, USB/Modalias IDs)
-├── protocol.h           # Packet codec (header-only)
-├── transport.h          # Transport abstract class
-├── transport.cpp        # RfcommTransport (BlueZ sockets)
-├── connection.h         # BmapConnection class (header-only)
-├── device.h             # DeviceConfig, all parsers/builders (header-only)
-├── devices.h            # qc_ultra2() / qc35() inline functions
-├── discovery.h          # find_bmap_device() declaration
-├── discovery.cpp        # Discovery implementation
-└── main.cpp             # CLI binary (bmapctl)
-```
-
-**Mostly header-only**: Only `transport.cpp` and `discovery.cpp` have
-compiled implementations (they use system calls). Everything else —
-protocol, parsers, device configs, connection — is in headers.
-
-**Device configs** are inline functions returning `DeviceConfig` structs.
-Features use `std::optional<Addr>` — same pattern as Rust's `Option<Addr>`.
-
-**Transport** is an abstract class with virtual methods:
-```cpp
-class Transport {
-public:
-    virtual std::vector<uint8_t> send_recv(const std::vector<uint8_t>& packet) = 0;
-    virtual std::vector<uint8_t> send_recv_drain(const std::vector<uint8_t>& packet) = 0;
-    virtual ~Transport() = default;
-};
-```
-
-Tests use a `MockTransport` subclass.
-
-**Error handling** uses `std::runtime_error` exceptions. No typed
-hierarchy — auth errors (code 5) are not programmatically distinguishable
-from other device errors without parsing the message string. The `require()` helper
-converts `std::nullopt` to an exception for unsupported features:
-```cpp
-static Addr require(const std::optional<Addr>& opt, const char* name) {
-    if (!opt) throw std::runtime_error(std::string(name) + " not supported");
-    return *opt;
-}
-```
-
-**Ownership**: `BmapConnection` owns the transport via `std::unique_ptr<Transport>`.
-The `connect()` function returns `std::unique_ptr<BmapConnection>`.
-
 ---
 
 ## Building & Testing
 
-A top-level `Makefile` orchestrates all three implementations.
-Prerequisites: Python 3, Rust/Cargo, CMake, GCC/Clang, `libbluetooth-dev`.
-
-### Quick Start
-
-```bash
-make test        # run all test suites (Python + Rust + C++)
-make artifacts   # build release binaries + SHA256SUMS
-```
-
-### Available Targets
+The top-level `Makefile` builds and tests the Python library.
+Prerequisites: Python 3, `libbluetooth-dev` (for real devices on Linux).
 
 | Target | Description |
 |--------|-------------|
-| `make test` | Run all tests across all three languages |
-| `make python-test` | Python unit tests (auto-creates virtualenv) |
-| `make rust-test` | Rust tests via `cargo test` |
-| `make cpp-test` | C++ tests via CMake + ctest |
-| `make artifacts` | Build release binaries, strip, generate checksums |
-| `make release VERSION=vX.Y.Z` | Full release: test → build → `gh release create` |
-| `make clean` | Remove all build artifacts, venvs, dist/ |
+| `make test` | Run all tests |
+| `make python-setup` | Create the virtualenv and install the package |
+| `make python-test` | Python unit tests |
+| `make python-lint` | Compile-check the Python modules |
+| `make python-build` | sdist and wheel in `python/dist/` |
 | `make integration` | Integration tests (requires paired Bluetooth device) |
+| `make clean` | Remove build artifacts and the virtualenv |
 | `make help` | Show all targets |
-
-### Build Flow
-
-```mermaid
-graph LR
-    subgraph test
-        PT[python-test] --> T[test]
-        RT[rust-test] --> T
-        CT[cpp-test] --> T
-    end
-
-    subgraph artifacts
-        RB[rust-build<br/>cargo build --release] --> A[artifacts]
-        CB[cpp-build<br/>cmake Release] --> A
-        A --> STRIP[strip binaries]
-        STRIP --> SHA[SHA256SUMS]
-    end
-
-    T --> REL[release]
-    SHA --> REL
-    REL --> GH[gh release create]
-
-    style T fill:#26de81,stroke:#333,color:#fff
-    style A fill:#4a9eff,stroke:#333,color:#fff
-    style REL fill:#ff9f43,stroke:#333,color:#fff
-    style GH fill:#a55eea,stroke:#333,color:#fff
-```
-
-### Release Process
-
-```bash
-# 1. Ensure all tests pass and artifacts build
-make test
-make artifacts
-
-# 2. Create a tagged release with binaries
-make release VERSION=v0.2.0
-
-# This runs: test → artifacts → gh release create
-# Binaries are named: bmapctl-{rust,cpp}-linux-{arch}
-# SHA256SUMS is included for verification
-```
-
-### Artifact Verification
-
-```bash
-# Download and verify
-cd dist/
-sha256sum -c SHA256SUMS
-
-# Install
-chmod +x bmapctl-rust-linux-x86_64
-sudo cp bmapctl-rust-linux-x86_64 /usr/local/bin/bmapctl
-```
-
-### Language-Specific Builds
-
-Each language can be built independently:
-
-```bash
-# Python — virtualenv auto-created
-make python-setup   # create venv, install deps
-make python-test    # run pytest
-make python-build   # sdist + wheel in python/dist/
-
-# Rust
-make rust-build     # cargo build --release
-make rust-test      # cargo test
-
-# C++
-make cpp-build      # cmake + make (Debug)
-make cpp-test       # build + run bmap_tests
-```

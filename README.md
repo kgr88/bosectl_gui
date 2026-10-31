@@ -4,9 +4,9 @@
 [![Release](https://img.shields.io/github/v/release/aaronsb/bosectl)](https://github.com/aaronsb/bosectl/releases/latest)
 [![Devices](https://img.shields.io/badge/Devices-2_supported_·_14_known-green)](docs/architecture.md#device-catalog)
 [![Python 3](https://img.shields.io/badge/Python-3-3572A5.svg)](python/)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](https://kernel.org)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](desktop/)
 
-**Control Bose headphones from Linux — no app, no cloud, no account.**
+**Control Bose headphones from Windows — no Bose app, no cloud, no account.**
 
 A Python library implementing the Bose BMAP protocol
 over Bluetooth RFCOMM. Full control over noise cancellation, EQ, spatial
@@ -113,7 +113,7 @@ bluetoothctl
 > exit
 ```
 
-`bosectl` auto-detects paired Bose devices by their BMAP service UUID —
+The backend auto-detects paired Bose devices by their BMAP service UUID —
 no MAC address configuration needed, even with renamed headphones.
 
 ## Architecture

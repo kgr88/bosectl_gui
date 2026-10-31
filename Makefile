@@ -35,7 +35,6 @@ python-lint: python-setup ## Lint Python code
 	$(PYTHON) -m py_compile $(PYTHON_DIR)/pybmap/__init__.py
 	$(PYTHON) -m py_compile $(PYTHON_DIR)/pybmap/protocol.py
 	$(PYTHON) -m py_compile $(PYTHON_DIR)/pybmap/connection.py
-	$(PYTHON) -m py_compile $(PYTHON_DIR)/pybmap/cli.py
 	@echo "All Python files compile OK"
 
 python-build: python-setup ## Build Python sdist and wheel
