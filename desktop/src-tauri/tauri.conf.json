@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev:ui",
     "devUrl": "http://127.0.0.1:14200",
-    "beforeBuildCommand": "corepack pnpm@10.13.1 build",
+    "beforeBuildCommand": "corepack pnpm build",
     "frontendDist": "../dist"
   },
   "app": {

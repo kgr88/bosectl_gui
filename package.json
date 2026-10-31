@@ -1,6 +1,7 @@
 {
   "name": "bosectl_gui",
   "private": true,
+  "packageManager": "pnpm@10.13.1",
   "scripts": {
     "dev": "pnpm --dir desktop dev"
   }
