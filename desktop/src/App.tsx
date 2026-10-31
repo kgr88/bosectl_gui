@@ -30,16 +30,21 @@ function asApiError(error: unknown): ApiError {
   };
 }
 
+type Theme = "system" | "light" | "dark";
+
+function parseTheme(value: string | null): Theme {
+  return value === "light" ? "light" : value === "dark" ? "dark" : "system";
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reduceDeviceEvent, initialDeviceState);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<ApiError | null>(null);
   const [page, setPage] = useState<Page>("home");
-  const [theme, setTheme] = useState<"system" | "light" | "dark">(() => {
-    const stored = localStorage.getItem("bosectl-theme");
-    return stored === "light" || stored === "dark" ? stored : "system";
-  });
+  const [theme, setTheme] = useState<Theme>(() =>
+    parseTheme(localStorage.getItem("bosectl-theme")),
+  );
   const refreshing = useRef(false);
   const lastTarget = useRef<ConnectionTarget | null>(null);
   const reconnectAttempts = useRef(0);
@@ -305,7 +310,7 @@ export default function App() {
               aria-label="Color theme"
               value={theme}
               onChange={(event) =>
-                setTheme(event.currentTarget.value as typeof theme)
+                setTheme(parseTheme(event.currentTarget.value))
               }
             >
               <option value="system">System theme</option>
