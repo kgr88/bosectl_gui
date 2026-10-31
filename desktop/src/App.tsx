@@ -25,7 +25,10 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<ApiError | null>(null);
   const [page, setPage] = useState<Page>("home");
-  const [theme, setTheme] = useState<"system" | "light" | "dark">(() => (localStorage.getItem("bosectl-theme") as "light" | "dark" | null) ?? "system");
+  const [theme, setTheme] = useState<"system" | "light" | "dark">(() => {
+    const stored = localStorage.getItem("bosectl-theme");
+    return stored === "light" || stored === "dark" ? stored : "system";
+  });
   const refreshing = useRef(false);
   const lastTarget = useRef<ConnectionTarget | null>(null);
   const reconnectAttempts = useRef(0);
