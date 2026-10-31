@@ -12,6 +12,13 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: npm
     directory: /desktop
@@ -20,6 +27,22 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    groups:
+      # Tauri crates and npm packages must use the same minor version.
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+        update-types:
+          - minor
+          - patch
+      minor-and-patch:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@tauri-apps/*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: cargo
     directory: /desktop/src-tauri
@@ -28,6 +51,22 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    groups:
+      # Tauri crates and npm packages must use the same minor version.
+      tauri:
+        patterns:
+          - "tauri*"
+        update-types:
+          - minor
+          - patch
+      minor-and-patch:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "tauri*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: pip
     directory: /python
@@ -36,3 +75,10 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
