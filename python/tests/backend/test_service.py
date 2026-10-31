@@ -4,7 +4,7 @@ import pytest
 
 from pybmap.backend.protocol import ProtocolError
 from pybmap.backend.service import BackendService
-from pybmap.discovery import _detect_device_type, _device_from_name
+from pybmap.discovery import _device_from_name
 from pybmap.errors import BmapConnectionError
 
 
@@ -158,7 +158,6 @@ def test_typed_channel_rejection_reaches_the_protocol_boundary():
 
 
 def test_unknown_discovery_never_defaults_to_ultra():
-    assert _detect_device_type("Name: Mystery Bose") is None
     assert _device_from_name("QuietComfort Ultra Headphones") == (None, None)
     assert _device_from_name("QuietComfort Ultra Headphones 2nd Gen")[1] == "qc_ultra2"
 

@@ -86,9 +86,9 @@ pybmap.known_devices()       # full catalog
 
 ### Prerequisites
 
-- **Linux** with BlueZ (standard Bluetooth stack)
+- **Windows** 10 or 11
 - **Bluetooth** adapter (built-in or USB)
-- **Bose headphones** paired via `bluetoothctl`
+- **Bose headphones** paired in Windows Bluetooth settings
 
 ### From Source
 
@@ -99,19 +99,6 @@ make test          # Run the Python tests
 ```
 
 See `make help` for all targets.
-
-### Pairing
-
-If your headphones aren't already paired:
-
-```bash
-bluetoothctl
-> scan on
-> pair XX:XX:XX:XX:XX:XX
-> trust XX:XX:XX:XX:XX:XX
-> connect XX:XX:XX:XX:XX:XX
-> exit
-```
 
 The backend auto-detects paired Bose devices by their BMAP service UUID —
 no MAC address configuration needed, even with renamed headphones.

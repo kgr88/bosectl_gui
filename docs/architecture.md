@@ -220,9 +220,9 @@ sequenceDiagram
 
     App->>Lib: connect(mac=None)
     Lib->>Disc: find_bmap_device()
-    Disc->>Disc: bluetoothctl devices Paired
-    Disc->>Disc: Filter by BMAP UUID + audio class
-    Disc->>Disc: Extract product ID from Modalias
+    Disc->>Disc: Enumerate paired devices (Windows Bluetooth API)
+    Disc->>Disc: Filter by BMAP service UUID
+    Disc->>Disc: Resolve device type from the device name
     Disc-->>Lib: (mac="4C:87:...", type="qc35")
     Lib->>Lib: get_device("qc35") → config
     Lib->>T: RfcommTransport(mac, channel=8)
@@ -236,10 +236,9 @@ sequenceDiagram
     Lib-->>App: BmapConnection(transport, config)
 ```
 
-**Discovery** uses `bluetoothctl` to enumerate paired devices, filtering by:
-1. Device class contains `audio-headset` or `audio-headphones`
-2. SDP records contain BMAP UUID `00000000-deca-fade-deca-deafdecacaff`
-3. Modalias product ID maps to a known device type
+**Discovery** uses the Windows Bluetooth API to enumerate paired devices, filtering by:
+1. SDP records contain BMAP UUID `00000000-deca-fade-deca-deafdecacaff`
+2. The device name maps to a known device type
 
 Connected devices are preferred over paired-but-disconnected.
 
@@ -389,7 +388,7 @@ pybmap/
 ├── protocol.py          # Packet codec (bmap_packet, parse_response)
 ├── transport.py         # RfcommTransport (AF_BLUETOOTH socket)
 ├── connection.py        # BmapConnection class
-├── discovery.py         # find_bmap_device() via bluetoothctl
+├── discovery.py         # Windows paired-device and SDP discovery
 ├── constants.py         # Operators, error codes, button/action/language tables
 ├── types.py             # NamedTuples (BmapResponse, ModeConfig, ButtonMapping, etc.)
 ├── errors.py            # Exception hierarchy
@@ -426,7 +425,7 @@ parser tests (parsers are pure functions). Connection tests use a
 ## Building & Testing
 
 The top-level `Makefile` builds and tests the Python library.
-Prerequisites: Python 3, `libbluetooth-dev` (for real devices on Linux).
+Prerequisite: Python 3.
 
 | Target | Description |
 |--------|-------------|

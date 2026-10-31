@@ -54,7 +54,7 @@ def connect(mac=None, device_type=None, transport_factory=None, channel_resolver
         if detected_mac is None:
             raise BmapNotFoundError(
                 "No connected BMAP device found. Pair and connect "
-                "via bluetoothctl, or pass mac= explicitly."
+                "in Windows Bluetooth settings, or pass mac= explicitly."
             )
         mac = detected_mac
         if device_type is None:
