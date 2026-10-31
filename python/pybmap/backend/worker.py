@@ -33,7 +33,7 @@ def _reader(stdin, incoming):
 
 def _coalesce_key(request):
     if request.method == "set_eq":
-        return (request.method, request.params["generation"])
+        return (request.method, request.params["generation"], "")
     if request.method == "set_noise_control" and request.params["kind"] == "cnc":
         return (request.method, request.params["generation"], "cnc")
     return None

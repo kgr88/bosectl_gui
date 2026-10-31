@@ -1,6 +1,7 @@
 """Smoke-test a frozen backend without requiring Bluetooth hardware."""
 
 import json
+import os
 import subprocess
 import sys
 
@@ -12,13 +13,17 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: smoke_sidecar.py <bosectl-backend.exe>")
 
+    backend = os.path.realpath(sys.argv[1])
+    if not os.path.isfile(backend):
+        raise SystemExit("backend executable not found: %s" % backend)
+
     requests = (
         {"v": PROTOCOL_VERSION, "id": "hello", "method": "hello", "params": {}},
         {"v": PROTOCOL_VERSION, "id": "stop", "method": "shutdown", "params": {}},
     )
     payload = "".join(json.dumps(item, separators=(",", ":")) + "\n" for item in requests)
     completed = subprocess.run(
-        [sys.argv[1]],
+        [backend],
         input=payload,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
