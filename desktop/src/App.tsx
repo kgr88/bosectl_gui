@@ -19,16 +19,19 @@ function asApiError(error: unknown): ApiError {
   return { code: "INTERNAL", message: error instanceof Error ? error.message : String(error), retryable: false };
 }
 
+type Theme = "system" | "light" | "dark";
+
+function parseTheme(value: string | null): Theme {
+  return value === "light" ? "light" : value === "dark" ? "dark" : "system";
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reduceDeviceEvent, initialDeviceState);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<ApiError | null>(null);
   const [page, setPage] = useState<Page>("home");
-  const [theme, setTheme] = useState<"system" | "light" | "dark">(() => {
-    const stored = localStorage.getItem("bosectl-theme");
-    return stored === "light" || stored === "dark" ? stored : "system";
-  });
+  const [theme, setTheme] = useState<Theme>(() => parseTheme(localStorage.getItem("bosectl-theme")));
   const refreshing = useRef(false);
   const lastTarget = useRef<ConnectionTarget | null>(null);
   const reconnectAttempts = useRef(0);
@@ -159,7 +162,7 @@ export default function App() {
   ];
 
   return <main className="mx-auto w-full max-w-[900px] px-7 pt-6 pb-8 max-[600px]:p-[18px]">
-    <header className="flex items-center justify-between gap-3.5 max-[600px]:items-start"><div><p className="mb-1 text-[11px] font-bold tracking-[0.09em] text-muted uppercase">BMAP device controls</p><h1 className="mr-2.5 inline text-[25px] leading-[1.2] font-bold">{snapshot?.identity?.name ?? "bosectl"}</h1>{snapshot?.battery && <span className="whitespace-nowrap text-[13px] text-muted" aria-label={`Battery ${snapshot.battery.percent} percent`}>{snapshot.battery.percent}% battery</span>}</div><div className="flex items-center justify-between gap-3.5 self-start max-[600px]:flex-col max-[600px]:items-end"><StatusPill state={state.connection} /><label><span className="sr-only">Color theme</span><select className={`${input} min-h-[29px] py-[3px] text-xs`} aria-label="Color theme" value={theme} onChange={(event) => setTheme(event.currentTarget.value as typeof theme)}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label></div></header>
+    <header className="flex items-center justify-between gap-3.5 max-[600px]:items-start"><div><p className="mb-1 text-[11px] font-bold tracking-[0.09em] text-muted uppercase">BMAP device controls</p><h1 className="mr-2.5 inline text-[25px] leading-[1.2] font-bold">{snapshot?.identity?.name ?? "bosectl"}</h1>{snapshot?.battery && <span className="whitespace-nowrap text-[13px] text-muted" aria-label={`Battery ${snapshot.battery.percent} percent`}>{snapshot.battery.percent}% battery</span>}</div><div className="flex items-center justify-between gap-3.5 self-start max-[600px]:flex-col max-[600px]:items-end"><StatusPill state={state.connection} /><label><span className="sr-only">Color theme</span><select className={`${input} min-h-[29px] py-[3px] text-xs`} aria-label="Color theme" value={theme} onChange={(event) => setTheme(parseTheme(event.currentTarget.value))}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label></div></header>
     {error && <div className="mt-[18px] flex items-center gap-2.5 border-l-[3px] border-danger bg-danger/9 px-3 py-2.5 text-danger" role="alert"><strong>{error.code}</strong><span className="flex-1">{error.message}</span><button className={`${secondaryButton} ${iconButton}`} aria-label="Dismiss error" onClick={() => setLocalError(null)}>×</button></div>}
     {!connected ? <ConnectionPage devices={devices} busy={busy} state={state.connection} onDiscover={() => void discover()} onConnect={(device) => void connect({ kind: "discovered", device_id: device.device_id })} onManualConnect={(target) => void connect(target)} /> : <>
       <nav className="mt-5 flex gap-[5px] overflow-x-auto rounded-[9px] border border-border bg-surface p-[3px] forced-colors:border-[CanvasText]" aria-label="Device controls">{pages.filter((item) => item.show).map((item) => <button type="button" className={`${page === item.id ? "border-accent bg-accent-soft text-accent" : "border-transparent bg-surface-raised text-ink"} min-h-[34px] flex-1 cursor-pointer rounded-[7px] border px-[13px] py-[7px] whitespace-nowrap disabled:cursor-default disabled:opacity-55`} aria-current={page === item.id ? "page" : undefined} key={item.id} onClick={() => setPage(item.id)}>{item.label}</button>)}</nav>
