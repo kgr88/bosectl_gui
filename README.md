@@ -71,9 +71,8 @@ dev = pybmap.lookup_device(0x4082)
 print(dev.name)       # "QuietComfort Ultra Headphones (2nd Gen)"
 print(dev.codename)   # "wolverine"
 
-# USB/Bluetooth identification
+# USB identification
 pybmap.usb_ids(0x4082)    # (0x05A7, 0x4082)
-pybmap.modalias(0x4082)   # "bluetooth:v05A7p4082d0000"
 
 # Check support status
 pybmap.is_supported(0x4082)  # True — has tested config

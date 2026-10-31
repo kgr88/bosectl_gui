@@ -330,7 +330,6 @@ is_supported(0x4024)     → False (NCH 700: recognized, no config yet)
 supported_devices()      → [wolfcastle, baywolf, edith, wolverine]
 known_devices()          → full catalog
 usb_ids(0x4082)          → (0x05A7, 0x4082)
-modalias(0x4082)         → "bluetooth:v05A7p4082d0000"
 ```
 
 The USB vendor ID `0x05A7` is shared by all Bose devices. The catalog
@@ -384,7 +383,7 @@ assigning a different parser function in the config.
 ```
 pybmap/
 ├── __init__.py          # connect() entry point, public API re-exports
-├── catalog.py           # Device catalog (PIDs, codenames, USB/Modalias IDs)
+├── catalog.py           # Device catalog (PIDs, codenames, USB IDs)
 ├── protocol.py          # Packet codec (bmap_packet, parse_response)
 ├── transport.py         # RfcommTransport (AF_BLUETOOTH socket)
 ├── connection.py        # BmapConnection class
