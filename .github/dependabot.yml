@@ -1,0 +1,38 @@
+# Dependabot keeps dependencies current. It also updates the commit SHA pins
+# in .github/workflows/ and the version comment next to each pin. Pins that
+# use a branch name as the comment, such as "# stable" on dtolnay/rust-toolchain,
+# have no version to update. Update those pins by hand.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: cargo
+    directory: /desktop/src-tauri
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: pip
+    directory: /python
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
