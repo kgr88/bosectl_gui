@@ -2,10 +2,7 @@
 
 .PHONY: help all test lint clean \
         python-setup python-test python-lint python-build python-publish \
-        rust-test rust-build rust-publish \
-        cpp-test cpp-build \
-        integration \
-        artifacts release
+        integration
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
