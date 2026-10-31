@@ -4,15 +4,11 @@
 [![Release](https://img.shields.io/github/v/release/aaronsb/bosectl)](https://github.com/aaronsb/bosectl/releases/latest)
 [![Devices](https://img.shields.io/badge/Devices-2_supported_·_14_known-green)](docs/architecture.md#device-catalog)
 [![Python 3](https://img.shields.io/badge/Python-3-3572A5.svg)](python/)
-[![Rust](https://img.shields.io/badge/Rust-1.70+-DEA584.svg)](rust/)
-[![C++17](https://img.shields.io/badge/C++-17-f34b7d.svg)](cpp/)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](https://kernel.org)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](desktop/)
 
-**Control Bose headphones from Linux — no app, no cloud, no account.**
+**Control Bose headphones from Windows — no Bose app, no cloud, no account.**
 
-![bosectl CLI](docs/media/screenshot.png)
-
-Libraries in Python, Rust, and C++ implementing the Bose BMAP protocol
+A Python library implementing the Bose BMAP protocol
 over Bluetooth RFCOMM. Full control over noise cancellation, EQ, spatial
 audio, button mapping, profiles, and device settings through a direct
 connection to the headphones.
@@ -65,36 +61,6 @@ with pybmap.connect() as dev:
     dev.set_buttons(0x10, 4, 2)     # Remap Action button to ANC
 ```
 
-```rust
-use bmap::connect;
-
-let dev = connect(None, None)?;
-println!("{}%", dev.battery()?);    // 80
-dev.set_anr("high")?;              // QC35
-dev.set_cnc(8)?;                   // QC Ultra 2
-```
-
-```cpp
-#include "bmap.h"
-
-auto dev = bmap::connect();
-std::cout << (int)dev->battery() << "%\n";
-dev->set_anr("high");              // QC35
-dev->set_cnc(8);                   // QC Ultra 2
-```
-
-### CLI Usage
-
-```bash
-# Auto-detects paired Bose device
-bosectl status              # Show model, battery, mode, settings
-bosectl cnc 7               # Noise cancellation level (QC Ultra 2)
-bosectl anr high            # Noise cancellation mode (QC35)
-bosectl eq 3 0 -2           # EQ: bass/mid/treble
-bosectl buttons set ANC     # Remap programmable button
-bosectl quiet               # Switch to Quiet mode
-```
-
 ### Device Catalog API
 
 ```python
@@ -105,9 +71,8 @@ dev = pybmap.lookup_device(0x4082)
 print(dev.name)       # "QuietComfort Ultra Headphones (2nd Gen)"
 print(dev.codename)   # "wolverine"
 
-# USB/Bluetooth identification
+# USB identification
 pybmap.usb_ids(0x4082)    # (0x05A7, 0x4082)
-pybmap.modalias(0x4082)   # "bluetooth:v05A7p4082d0000"
 
 # Check support status
 pybmap.is_supported(0x4082)  # True — has tested config
@@ -120,51 +85,26 @@ pybmap.known_devices()       # full catalog
 
 ### Prerequisites
 
-- **Linux** with BlueZ (standard Bluetooth stack)
+- **Windows** 10 or 11
 - **Bluetooth** adapter (built-in or USB)
-- **Bose headphones** paired via `bluetoothctl`
-
-### From Release Binaries
-
-```bash
-# Download from GitHub releases
-curl -LO https://github.com/aaronsb/bosectl/releases/latest/download/bmapctl-rust-linux-x86_64
-curl -LO https://github.com/aaronsb/bosectl/releases/latest/download/SHA256SUMS
-sha256sum -c SHA256SUMS
-chmod +x bmapctl-rust-linux-x86_64
-sudo cp bmapctl-rust-linux-x86_64 /usr/local/bin/bmapctl
-```
+- **Bose headphones** paired in Windows Bluetooth settings
 
 ### From Source
 
 ```bash
 git clone https://github.com/aaronsb/bosectl.git
-cd bosectl
-make test          # Run all tests (Python + Rust + C++)
-make artifacts     # Build release binaries + SHA256SUMS
+cd bosectl/python
+python -m pip install -e .
+python -m pip install pytest
+pytest             # Run the Python tests
 ```
 
-See `make help` for all targets.
-
-### Pairing
-
-If your headphones aren't already paired:
-
-```bash
-bluetoothctl
-> scan on
-> pair XX:XX:XX:XX:XX:XX
-> trust XX:XX:XX:XX:XX:XX
-> connect XX:XX:XX:XX:XX:XX
-> exit
-```
-
-`bosectl` auto-detects paired Bose devices by their BMAP service UUID —
+The backend auto-detects paired Bose devices by their BMAP service UUID —
 no MAC address configuration needed, even with renamed headphones.
 
 ## Architecture
 
-Three libraries sharing the same layered design:
+The library uses this layered design:
 
 ```
 Application → BmapConnection → Device Config → Transport → Protocol → Bluetooth RFCOMM
@@ -206,22 +146,19 @@ Full protocol reference: **[NOTES.md](NOTES.md)**
 ## Project Structure
 
 ```
-├── python/pybmap/       # Python library + bosectl CLI
-├── rust/src/            # Rust library + bmapctl CLI
-├── cpp/src/             # C++ library + bmapctl CLI
+├── python/pybmap/       # Python library and backend sidecar
 ├── docs/                # Architecture guide, device docs
 ├── NOTES.md             # Protocol reverse engineering notes
-├── Makefile             # Build, test, release across all languages
 └── fixtures/            # Captured protocol data
 ```
 
-## Building & Releasing
+## Building & Testing
+
+Run these commands from `python/`:
 
 ```bash
-make test                       # All tests (119 Python, 59 Rust, 51 C++)
-make artifacts                  # Build + strip + SHA256SUMS in dist/
-make release VERSION=v0.2.0     # Test → build → gh release create
-make clean                      # Remove all build artifacts
+pytest                          # All Python tests
+python -m build                 # sdist and wheel in python/dist/
 ```
 
 ## License

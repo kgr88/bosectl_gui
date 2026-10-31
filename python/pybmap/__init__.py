@@ -21,7 +21,7 @@ from .devices import DEVICES, get_device
 from .catalog import (
     BOSE_USB_VID, BMAP_UUID, BoseDevice, CATALOG,
     lookup_device, known_devices, supported_devices, is_supported,
-    usb_ids, modalias,
+    usb_ids,
 )
 from .errors import (
     BmapError, BmapConnectionError, BmapAuthError,
@@ -54,7 +54,7 @@ def connect(mac=None, device_type=None, transport_factory=None, channel_resolver
         if detected_mac is None:
             raise BmapNotFoundError(
                 "No connected BMAP device found. Pair and connect "
-                "via bluetoothctl, or pass mac= explicitly."
+                "in Windows Bluetooth settings, or pass mac= explicitly."
             )
         mac = detected_mac
         if device_type is None:

@@ -3,7 +3,7 @@
 from pybmap.catalog import (
     BOSE_USB_VID, CATALOG,
     lookup_device, supported_devices,
-    is_supported, usb_ids, modalias,
+    is_supported, usb_ids,
 )
 
 
@@ -64,19 +64,6 @@ class TestUsbIds:
 
     def test_unknown(self):
         assert usb_ids(0xFFFF) is None
-
-
-class TestModalias:
-    def test_known(self):
-        m = modalias(0x4082)
-        assert m == "bluetooth:v05A7p4082d0000"
-
-    def test_qc35(self):
-        m = modalias(0x4020)
-        assert m == "bluetooth:v05A7p4020d0000"
-
-    def test_unknown(self):
-        assert modalias(0xFFFF) is None
 
 
 class TestCatalogIntegrity:

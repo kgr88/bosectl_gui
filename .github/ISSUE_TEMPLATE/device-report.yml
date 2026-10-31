@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for testing! This helps us expand device support.
-        Run `bosectl status` or `bmapctl status` and fill in what you can.
+        Fill in what you can.
 
   - type: input
     id: device
@@ -22,7 +22,7 @@ body:
     id: firmware
     attributes:
       label: Firmware Version
-      description: From `bosectl status` or the Bose app
+      description: From the desktop app or the Bose app
       placeholder: "4.8.1"
 
   - type: input

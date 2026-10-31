@@ -1,14 +1,12 @@
 """Platform discovery for paired BMAP devices.
 
-Linux keeps the existing ``bluetoothctl`` path.  Windows uses the documented
-Bluetooth desktop API through ``ctypes`` so the backend has no optional runtime
-dependency.  Discovery never guesses an unknown device configuration.
+The backend uses the documented Windows Bluetooth desktop API through
+``ctypes``, so it has no optional runtime dependency.  Discovery never guesses an unknown device configuration.
 """
 
 import ctypes
 import re
 import socket
-import subprocess
 import sys
 import uuid
 from collections import namedtuple
@@ -35,8 +33,6 @@ def discover_devices(platform=None):
     platform = platform or sys.platform
     if platform == "win32":
         return _scan_windows_devices()
-    if platform.startswith("linux"):
-        return _scan_linux_devices()
     return []
 
 
@@ -50,62 +46,6 @@ def find_bmap_device():
         if device.device_type:
             return (device.address, device.device_type)
     return (None, None)
-
-
-def _scan_linux_devices():
-    devices = []
-    try:
-        result = subprocess.run(
-            ["bluetoothctl", "devices", "Paired"],
-            capture_output=True, text=True, timeout=5,
-        )
-        for line in result.stdout.strip().splitlines():
-            parts = line.split(None, 2)
-            if len(parts) < 2:
-                continue
-            address = parts[1]
-            fallback_name = parts[2] if len(parts) > 2 else "Bose device"
-            info = subprocess.run(
-                ["bluetoothctl", "info", address],
-                capture_output=True, text=True, timeout=3,
-            ).stdout
-            is_audio = "audio-headset" in info or "audio-headphones" in info
-            if not (is_audio and BMAP_UUID.lower() in info.lower()):
-                continue
-            name_match = re.search(r"^\s*Name:\s*(.+)$", info, re.MULTILINE)
-            product_id = _product_id_from_modalias(info)
-            device_type = _device_type_from_product(product_id)
-            channel = _channel_for_type(device_type)
-            devices.append(DiscoveredDevice(
-                address, name_match.group(1).strip() if name_match else fallback_name,
-                BMAP_UUID, channel, product_id, device_type, True,
-                "Connected: yes" in info,
-            ))
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        pass
-    return devices
-
-
-# Kept for callers and tests that used the original private helper.
-def _scan_paired_devices():
-    return [(d.address, d.device_type, d.connected) for d in _scan_linux_devices()]
-
-
-def _product_id_from_modalias(info_text):
-    match = re.search(
-        r"Modalias:\s*bluetooth:v[0-9A-Fa-f]{4}p([0-9A-Fa-f]{4})", info_text
-    )
-    return int(match.group(1), 16) if match else None
-
-
-def _device_type_from_product(product_id):
-    entry = lookup_device(product_id) if product_id is not None else None
-    return entry.config if entry and entry.config else None
-
-
-def _detect_device_type(info_text):
-    """Compatibility helper; importantly, unknown devices remain unknown."""
-    return _device_type_from_product(_product_id_from_modalias(info_text))
 
 
 def _device_from_name(name):

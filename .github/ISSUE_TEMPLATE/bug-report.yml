@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in the library or CLI
+description: Report a bug in the library or desktop app
 labels: ["bug"]
 body:
   - type: input
@@ -11,14 +11,12 @@ body:
       required: true
 
   - type: dropdown
-    id: language
+    id: component
     attributes:
-      label: Language
+      label: Component
       options:
-        - Python (pybmap)
-        - Rust (bmap)
-        - C++ (bmap)
-        - CLI (bosectl / bmapctl)
+        - Python library (pybmap)
+        - Windows desktop app
     validations:
       required: true
 
@@ -41,12 +39,12 @@ body:
       label: Steps to reproduce
       placeholder: |
         1. Connect to QC35
-        2. Run `bosectl anr high`
+        2. Set noise cancellation to high
         3. ...
 
   - type: input
     id: version
     attributes:
       label: Version
-      description: From `bosectl --help` or `bmapctl --help` (shows version + git hash)
-      placeholder: "0.1.0 (abc1234)"
+      description: pybmap version or desktop app version
+      placeholder: "0.3.0"

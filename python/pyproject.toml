@@ -13,7 +13,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Topic :: Multimedia :: Sound/Audio",
@@ -22,11 +21,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/abock/bose-headphones"
-Repository = "https://github.com/abock/bose-headphones"
-
-[project.scripts]
-bosectl = "pybmap.cli:main"
+Homepage = "https://github.com/aaronsb/bosectl"
+Repository = "https://github.com/aaronsb/bosectl"
 
 [build-system]
 requires = ["hatchling"]

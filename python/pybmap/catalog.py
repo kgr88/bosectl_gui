@@ -136,17 +136,3 @@ def usb_ids(product_id):
     if product_id in CATALOG:
         return (BOSE_USB_VID, product_id)
     return None
-
-
-def modalias(product_id):
-    """Generate a Bluetooth Modalias string for a known device.
-
-    Args:
-        product_id: Bose product ID (int).
-
-    Returns:
-        Modalias string like "bluetooth:v009Bp4082d0000", or None.
-    """
-    if product_id in CATALOG:
-        return "bluetooth:v%04Xp%04Xd0000" % (BOSE_USB_VID, product_id)
-    return None
