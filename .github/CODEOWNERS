@@ -1,6 +1,6 @@
 # Default owner for all files
-* @aaronsb
+* @kgr88
 
 # Language-specific ownership
-python/ @aaronsb
-docs/   @aaronsb
+python/ @kgr88
+docs/   @kgr88

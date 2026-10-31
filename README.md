@@ -1,7 +1,7 @@
 # bosectl
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/aaronsb/bosectl)](https://github.com/aaronsb/bosectl/releases/latest)
+[![Release](https://img.shields.io/github/v/release/kgr88/bosectl_gui)](https://github.com/kgr88/bosectl_gui/releases/latest)
 [![Devices](https://img.shields.io/badge/Devices-2_supported_·_14_known-green)](docs/architecture.md#device-catalog)
 [![Python 3](https://img.shields.io/badge/Python-3-3572A5.svg)](python/)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](desktop/)
@@ -12,6 +12,9 @@ A Python library implementing the Bose BMAP protocol
 over Bluetooth RFCOMM. Full control over noise cancellation, EQ, spatial
 audio, button mapping, profiles, and device settings through a direct
 connection to the headphones.
+
+This repository is a fork of [aaronsb/bosectl](https://github.com/aaronsb/bosectl),
+released under the MIT license.
 
 > **This is not an exploit.** We use the BMAP protocol's standard SETGET
 > operator, which the headphones accept without authentication. No keys
@@ -92,8 +95,8 @@ pybmap.known_devices()       # full catalog
 ### From Source
 
 ```bash
-git clone https://github.com/aaronsb/bosectl.git
-cd bosectl/python
+git clone https://github.com/kgr88/bosectl_gui.git
+cd bosectl_gui/python
 python -m pip install -e .
 python -m pip install pytest
 pytest             # Run the Python tests
