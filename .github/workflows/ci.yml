@@ -59,9 +59,32 @@ jobs:
       - run: cargo test
         working-directory: desktop/src-tauri
 
+  changes:
+    name: Detect packaging changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      packaging: ${{ steps.filter.outputs.packaging }}
+    steps:
+      - id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            packaging:
+              - .github/workflows/ci.yml
+              - packaging/windows/**
+              - python/**
+              - desktop/src-tauri/**
+              - desktop/package.json
+              - desktop/pnpm-lock.yaml
+
   package:
     name: Windows installer
-    needs: [python, renderer, rust]
+    needs: [changes, python, renderer, rust]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.packaging == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +100,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: desktop/src-tauri
-      - run: python -m pip install pyinstaller pytest
+      - run: python -m pip install pyinstaller
       - run: corepack enable
       - run: corepack pnpm@${{ env.PNPM_VERSION }} --dir desktop install --frozen-lockfile
       - name: Build the frozen backend and NSIS installer
