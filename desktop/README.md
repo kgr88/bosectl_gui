@@ -10,7 +10,7 @@ The IPC and renderer command contracts are documented in
 - Windows 10 or 11 with Evergreen WebView2
 - Node.js 22.12 or newer with Corepack
 - Rust 1.77.2 or newer with the MSVC Windows target
-- Python 3.10 or newer for backend development
+- Python 3.12 or newer for backend development
 
 ## Commands
 
