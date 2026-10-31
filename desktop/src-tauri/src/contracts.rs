@@ -561,7 +561,7 @@ impl ProfileList {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum DeviceEvent {
-    SnapshotChanged { data: DeviceSnapshot },
+    SnapshotChanged { data: Box<DeviceSnapshot> },
     ConnectionChanged { data: ConnectionChangedData },
     BackendError { data: ApiError },
 }

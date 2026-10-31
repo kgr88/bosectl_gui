@@ -20,78 +20,6 @@ pub struct AppState {
     pub _single_instance: SingleInstanceGuard,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::lifecycle::SingleInstanceGuard;
-
-    fn snapshot(generation: u64, revision: u64) -> DeviceSnapshot {
-        serde_json::from_value(serde_json::json!({
-            "identity": null, "battery": null, "firmware": null,
-            "connection": {"state": "connected", "reason": null, "rfcomm_channel": 2},
-            "capabilities": {"noise_control": null, "equalizer": [], "settings": [], "profiles": null},
-            "values": {"noise_control": null, "eq": {}, "settings": {}, "profile_id": null},
-            "generation": generation, "revision": revision
-        })).unwrap()
-    }
-
-    #[test]
-    fn rejects_old_generations_and_revisions() {
-        let state = AppState::new(SingleInstanceGuard::for_test());
-        state.accept_snapshot(snapshot(2, 4)).unwrap();
-        assert_eq!(
-            state.accept_snapshot(snapshot(1, 99)).unwrap_err().code,
-            ErrorCode::StaleGeneration
-        );
-        assert_eq!(
-            state.accept_snapshot(snapshot(2, 3)).unwrap_err().code,
-            ErrorCode::StaleGeneration
-        );
-        assert!(state.accept_snapshot(snapshot(3, 0)).is_ok());
-    }
-
-    #[test]
-    fn connection_attempt_starts_a_new_backend_ordering_epoch() {
-        let state = AppState::new(SingleInstanceGuard::for_test());
-        state.accept_snapshot(snapshot(7, 40)).unwrap();
-
-        let attempt = state.begin_connection();
-        assert!(state
-            .accept_connection_snapshot(snapshot(1, 2), attempt)
-            .is_ok());
-        assert!(state.accept_snapshot(snapshot(1, 3)).is_ok());
-
-        let superseded = state.begin_connection();
-        let current = state.begin_connection();
-        assert_eq!(
-            state
-                .accept_connection_snapshot(snapshot(2, 1), superseded)
-                .unwrap_err()
-                .code,
-            ErrorCode::StaleGeneration
-        );
-        assert!(state
-            .accept_connection_snapshot(snapshot(3, 1), current)
-            .is_ok());
-    }
-
-    #[test]
-    fn cached_snapshot_is_available_for_a_recreated_webview_and_clears_on_disconnect() {
-        let state = AppState::new(SingleInstanceGuard::for_test());
-        state.accept_snapshot(snapshot(2, 4)).unwrap();
-        assert_eq!(state.current_snapshot().unwrap().unwrap().revision, 4);
-        state.record_backend_event(&DeviceEvent::ConnectionChanged {
-            data: crate::contracts::ConnectionChangedData {
-                state: ConnectionState::Disconnected,
-                generation: 2,
-                revision: 5,
-                reason: None,
-            },
-        });
-        assert!(state.current_snapshot().unwrap().is_none());
-    }
-}
-
 impl AppState {
     pub fn new(single_instance: SingleInstanceGuard) -> Self {
         Self {
@@ -191,7 +119,7 @@ impl AppState {
     pub fn record_backend_event(&self, event: &DeviceEvent) {
         match event {
             DeviceEvent::SnapshotChanged { data } => {
-                let _ = self.accept_snapshot(data.clone());
+                let _ = self.accept_snapshot((**data).clone());
             }
             DeviceEvent::ConnectionChanged { data } => {
                 let generation = self.generation.load(Ordering::Acquire);
@@ -213,5 +141,77 @@ impl AppState {
             }
             DeviceEvent::BackendError { .. } => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lifecycle::SingleInstanceGuard;
+
+    fn snapshot(generation: u64, revision: u64) -> DeviceSnapshot {
+        serde_json::from_value(serde_json::json!({
+            "identity": null, "battery": null, "firmware": null,
+            "connection": {"state": "connected", "reason": null, "rfcomm_channel": 2},
+            "capabilities": {"noise_control": null, "equalizer": [], "settings": [], "profiles": null},
+            "values": {"noise_control": null, "eq": {}, "settings": {}, "profile_id": null},
+            "generation": generation, "revision": revision
+        })).unwrap()
+    }
+
+    #[test]
+    fn rejects_old_generations_and_revisions() {
+        let state = AppState::new(SingleInstanceGuard::for_test());
+        state.accept_snapshot(snapshot(2, 4)).unwrap();
+        assert_eq!(
+            state.accept_snapshot(snapshot(1, 99)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
+        assert_eq!(
+            state.accept_snapshot(snapshot(2, 3)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
+        assert!(state.accept_snapshot(snapshot(3, 0)).is_ok());
+    }
+
+    #[test]
+    fn connection_attempt_starts_a_new_backend_ordering_epoch() {
+        let state = AppState::new(SingleInstanceGuard::for_test());
+        state.accept_snapshot(snapshot(7, 40)).unwrap();
+
+        let attempt = state.begin_connection();
+        assert!(state
+            .accept_connection_snapshot(snapshot(1, 2), attempt)
+            .is_ok());
+        assert!(state.accept_snapshot(snapshot(1, 3)).is_ok());
+
+        let superseded = state.begin_connection();
+        let current = state.begin_connection();
+        assert_eq!(
+            state
+                .accept_connection_snapshot(snapshot(2, 1), superseded)
+                .unwrap_err()
+                .code,
+            ErrorCode::StaleGeneration
+        );
+        assert!(state
+            .accept_connection_snapshot(snapshot(3, 1), current)
+            .is_ok());
+    }
+
+    #[test]
+    fn cached_snapshot_is_available_for_a_recreated_webview_and_clears_on_disconnect() {
+        let state = AppState::new(SingleInstanceGuard::for_test());
+        state.accept_snapshot(snapshot(2, 4)).unwrap();
+        assert_eq!(state.current_snapshot().unwrap().unwrap().revision, 4);
+        state.record_backend_event(&DeviceEvent::ConnectionChanged {
+            data: crate::contracts::ConnectionChangedData {
+                state: ConnectionState::Disconnected,
+                generation: 2,
+                revision: 5,
+                reason: None,
+            },
+        });
+        assert!(state.current_snapshot().unwrap().is_none());
     }
 }
