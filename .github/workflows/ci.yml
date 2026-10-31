@@ -82,6 +82,7 @@ jobs:
               - desktop/src-tauri/**
               - desktop/package.json
               - desktop/pnpm-lock.yaml
+              - desktop/pnpm-workspace.yaml
 
   package:
     name: Windows installer
