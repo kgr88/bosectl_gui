@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""Interactive BMAP setting capture tool for Bose QC Ultra 2."""
+"""Interactive BMAP setting capture tool for Bose QC Ultra 2.
 
+Usage (from python/tools): python bmap-capture.py AA:BB:CC:DD:EE:FF
+"""
+
+import argparse
 import socket
 import time
 import json
@@ -8,9 +12,10 @@ import os
 import re
 import sys
 
-BOSE_MAC = "XX:XX:XX:XX:XX:XX"  # Set to your headphones' BT MAC address
 CHANNEL = 2
-CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "captures")
+CAPTURE_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "captures")
+)
 
 # All known-responding functions from our scan
 FUNCTIONS = [
@@ -29,10 +34,10 @@ FUNCTIONS = [
 ]
 
 
-def connect():
+def connect(mac):
     sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
     sock.settimeout(2)
-    sock.connect((BOSE_MAC, CHANNEL))
+    sock.connect((mac, CHANNEL))
     return sock
 
 
@@ -72,7 +77,7 @@ def slugify(text):
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')[:50]
 
 
-def main():
+def main(mac):
     os.makedirs(CAPTURE_DIR, exist_ok=True)
 
     print("=" * 60)
@@ -94,7 +99,7 @@ def main():
 
         print(f"\nConnecting to Fargo...", end=" ", flush=True)
         try:
-            sock = connect()
+            sock = connect(mac)
         except Exception as e:
             print(f"FAILED: {e}")
             print("Make sure headphones are connected and try again.")
@@ -161,7 +166,7 @@ def main():
         save_data = {
             "description": desc,
             "timestamp": ts,
-            "mac": BOSE_MAC,
+            "mac": mac,
             "snapshots": [
                 {
                     "t": s["t"],
@@ -181,4 +186,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Capture BMAP setting changes.")
+    parser.add_argument("mac", help="Bluetooth address of the headphones, e.g. AA:BB:CC:DD:EE:FF")
+    main(parser.parse_args().mac)

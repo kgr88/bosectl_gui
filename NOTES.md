@@ -570,7 +570,7 @@ From `DeviceManagementPackets.java`:
 - `com.bose.bmap.model.factories.AuthenticationPackets` — auth error codes & capabilities bitmask
 
 ## Tools
-- `bmap-capture.py` — Interactive setting change capture tool
+- `python/tools/bmap-capture.py` — Interactive setting change capture tool
 - `captures/` — Captured setting toggle data (8 captures)
 - `snoop/` — Network captures and bugreports
 
