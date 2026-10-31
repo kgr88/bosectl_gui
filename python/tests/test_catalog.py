@@ -1,9 +1,12 @@
 """Tests for the Bose device catalog."""
 
 from pybmap.catalog import (
-    BOSE_USB_VID, CATALOG,
-    lookup_device, supported_devices,
-    is_supported, usb_ids,
+    BOSE_USB_VID,
+    CATALOG,
+    is_supported,
+    lookup_device,
+    supported_devices,
+    usb_ids,
 )
 
 
@@ -55,6 +58,7 @@ class TestSupport:
         devs = supported_devices()
         assert len(devs) >= 4  # wolfcastle, baywolf, edith, wolverine
         assert all(d.config is not None for d in devs)
+
 
 class TestUsbIds:
     def test_known(self):

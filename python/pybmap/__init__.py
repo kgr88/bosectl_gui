@@ -14,22 +14,32 @@ Usage:
         ...
 """
 
-from .connection import BmapConnection
-from .transport import RfcommTransport
-from .discovery import find_bmap_device, resolve_rfcomm_channels
-from .devices import DEVICES, get_device
 from .catalog import (
-    BOSE_USB_VID, BMAP_UUID, BoseDevice, CATALOG,
-    lookup_device, known_devices, supported_devices, is_supported,
+    BMAP_UUID,
+    BOSE_USB_VID,
+    CATALOG,
+    BoseDevice,
+    is_supported,
+    known_devices,
+    lookup_device,
+    supported_devices,
     usb_ids,
 )
-from .errors import (
-    BmapError, BmapConnectionError, BmapAuthError,
-    BmapDeviceError, BmapTimeoutError, BmapNotFoundError,
-)
-from .types import DeviceStatus, ModeConfig, EqBand, ButtonMapping, BmapResponse
-from .protocol import bmap_packet, parse_response, parse_all_responses
+from .connection import BmapConnection
 from .constants import OP_ERROR, OP_GET, OP_STATUS
+from .devices import DEVICES, get_device
+from .discovery import find_bmap_device, resolve_rfcomm_channels
+from .errors import (
+    BmapAuthError,
+    BmapConnectionError,
+    BmapDeviceError,
+    BmapError,
+    BmapNotFoundError,
+    BmapTimeoutError,
+)
+from .protocol import bmap_packet, parse_all_responses, parse_response
+from .transport import RfcommTransport
+from .types import BmapResponse, ButtonMapping, DeviceStatus, EqBand, ModeConfig
 
 __version__ = "0.3.0"
 
@@ -62,7 +72,8 @@ def connect(mac=None, device_type=None, transport_factory=None, channel_resolver
 
     if device_type is None:
         raise BmapNotFoundError(
-            "Device type could not be identified; pass device_type='qc_ultra2' or 'qc35'"
+            "Device type could not be identified; "
+            "pass device_type='qc_ultra2' or 'qc35'"
         )
 
     device = get_device(device_type)
@@ -109,19 +120,23 @@ def _validate_bmap_endpoint(transport, device):
     if feature is None:
         raise BmapConnectionError(
             "Device definition has no safe endpoint validation read",
-            code="UNSUPPORTED_DEVICE", channel=transport.channel,
+            code="UNSUPPORTED_DEVICE",
+            channel=transport.channel,
         )
     fblock, func = feature["addr"]
     response = parse_response(transport.send_recv(bmap_packet(fblock, func, OP_GET)))
     if response is None or response.fblock != fblock or response.func != func:
         raise BmapConnectionError(
             "RFCOMM channel %s did not return a BMAP response" % transport.channel,
-            code="SERVICE_NOT_FOUND", channel=transport.channel,
+            code="SERVICE_NOT_FOUND",
+            channel=transport.channel,
         )
     if response.op == OP_ERROR and response.payload and response.payload[0] == 5:
         raise BmapAuthError("The BMAP service requires device authentication")
     if response.op != OP_STATUS or not response.payload:
         raise BmapConnectionError(
-            "RFCOMM channel %s did not validate as the BMAP service" % transport.channel,
-            code="SERVICE_NOT_FOUND", channel=transport.channel,
+            "RFCOMM channel %s did not validate as the BMAP service"
+            % transport.channel,
+            code="SERVICE_NOT_FOUND",
+            channel=transport.channel,
         )

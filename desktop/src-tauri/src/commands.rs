@@ -33,7 +33,12 @@ pub async fn connect_device(
 ) -> Result<DeviceSnapshot, ApiError> {
     target.validate()?;
     let attempt = state.begin_connection();
-    let snapshot = call(state.backend.clone(), "connect", json!({ "target": target })).await?;
+    let snapshot = call(
+        state.backend.clone(),
+        "connect",
+        json!({ "target": target }),
+    )
+    .await?;
     state.accept_connection_snapshot(snapshot, attempt)
 }
 

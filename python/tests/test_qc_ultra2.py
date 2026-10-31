@@ -1,6 +1,8 @@
 """Tests for QC Ultra 2 device configuration."""
 
-from pybmap.devices import qc_ultra2, DEVICES, get_device
+import pytest
+
+from pybmap.devices import DEVICES, get_device, qc_ultra2
 
 
 class TestDeviceRegistry:
@@ -16,11 +18,9 @@ class TestDeviceRegistry:
 
     def test_unknown_device(self):
         from pybmap.errors import BmapError
-        try:
+
+        with pytest.raises(BmapError):
             get_device("nonexistent")
-            assert False, "Should have raised BmapError"
-        except BmapError:
-            pass
 
 
 class TestQCUltra2Config:
@@ -30,10 +30,23 @@ class TestQCUltra2Config:
 
     def test_has_all_features(self):
         expected = [
-            "battery", "firmware", "product_name", "voice_prompts",
-            "cnc", "eq", "buttons", "multipoint", "sidetone",
-            "auto_pause", "auto_answer", "pairing", "power",
-            "get_all_modes", "current_mode", "mode_config", "favorites",
+            "battery",
+            "firmware",
+            "product_name",
+            "voice_prompts",
+            "cnc",
+            "eq",
+            "buttons",
+            "multipoint",
+            "sidetone",
+            "auto_pause",
+            "auto_answer",
+            "pairing",
+            "power",
+            "get_all_modes",
+            "current_mode",
+            "mode_config",
+            "favorites",
         ]
         for feat in expected:
             assert feat in qc_ultra2.FEATURES, "Missing feature: %s" % feat
@@ -76,24 +89,30 @@ class TestQCUltra2Config:
 class TestQC35Config:
     def test_has_device_info(self):
         from pybmap.devices import qc35
+
         assert "QC" in qc35.DEVICE_INFO["name"] or "Quiet" in qc35.DEVICE_INFO["name"]
 
     def test_no_eq(self):
         from pybmap.devices import qc35
+
         assert "eq" not in qc35.FEATURES
 
     def test_no_spatial(self):
         from pybmap.devices import qc35
+
         assert "spatial" not in qc35.FEATURES
 
     def test_has_battery(self):
         from pybmap.devices import qc35
+
         assert "battery" in qc35.FEATURES
 
     def test_no_editable_slots(self):
         from pybmap.devices import qc35
+
         assert len(qc35.EDITABLE_SLOTS) == 0
 
     def test_buttons_has_builder(self):
         from pybmap.devices import qc35
+
         assert qc35.FEATURES["buttons"].get("builder") is not None

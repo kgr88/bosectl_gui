@@ -8,6 +8,7 @@
     "dev": "tauri dev",
     "dev:ui": "vite",
     "build": "tsc --noEmit && vite build",
+    "lint": "eslint . && prettier --check .",
     "release:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File ../packaging/windows/build-release.ps1",
     "test": "vitest run",
     "tauri": "tauri"
@@ -18,13 +19,18 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },

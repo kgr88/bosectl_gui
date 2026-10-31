@@ -1,10 +1,13 @@
 """Tests for the universal BMAP protocol module."""
 
+from pybmap.constants import OP_ERROR, OP_GET, OP_SETGET, OP_START, OP_STATUS
 from pybmap.protocol import (
-    bmap_packet, parse_response, parse_all_responses, fmt_response,
+    bmap_packet,
     encode_mode_name,
+    fmt_response,
+    parse_all_responses,
+    parse_response,
 )
-from pybmap.constants import OP_GET, OP_SETGET, OP_START, OP_STATUS, OP_RESULT, OP_ERROR
 from pybmap.types import BmapResponse
 
 
@@ -15,15 +18,15 @@ class TestBmapPacket:
 
     def test_start_mode_switch(self):
         pkt = bmap_packet(31, 3, OP_START, bytes([0, 0]))
-        assert pkt == bytes([0x1f, 0x03, 0x05, 0x02, 0x00, 0x00])
+        assert pkt == bytes([0x1F, 0x03, 0x05, 0x02, 0x00, 0x00])
 
     def test_setget_with_payload(self):
         payload = bytes([0x03, 0x00])  # EQ band
         pkt = bmap_packet(1, 7, OP_SETGET, payload)
-        assert pkt[0] == 1   # fblock
-        assert pkt[1] == 7   # func
-        assert pkt[2] == 2   # OP_SETGET
-        assert pkt[3] == 2   # payload length
+        assert pkt[0] == 1  # fblock
+        assert pkt[1] == 7  # func
+        assert pkt[2] == 2  # OP_SETGET
+        assert pkt[3] == 2  # payload length
         assert pkt[4:] == payload
 
     def test_empty_payload(self):
@@ -58,10 +61,10 @@ class TestParseResponse:
     def test_too_short(self):
         assert parse_response(bytes([1, 2])) is None
         assert parse_response(bytes([1, 2, 3])) is None
-        assert parse_response(bytes()) is None
+        assert parse_response(b"") is None
 
     def test_status_with_payload(self):
-        payload = bytes([0x50, 0xff, 0xff, 0x00])  # Battery STATUS
+        payload = bytes([0x50, 0xFF, 0xFF, 0x00])  # Battery STATUS
         data = bytes([2, 2, 0x03, len(payload)]) + payload
         resp = parse_response(data)
         assert resp.op == OP_STATUS
@@ -94,7 +97,7 @@ class TestParseAllResponses:
         assert responses[1].payload == bytes([0x00])
 
     def test_empty_data(self):
-        assert parse_all_responses(bytes()) == []
+        assert parse_all_responses(b"") == []
         assert parse_all_responses(bytes([1, 2, 3])) == []
 
 

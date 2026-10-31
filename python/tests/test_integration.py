@@ -8,6 +8,7 @@ Set BMAP_MAC to specify a MAC address (otherwise auto-detected).
 """
 
 import os
+
 import pytest
 
 import pybmap

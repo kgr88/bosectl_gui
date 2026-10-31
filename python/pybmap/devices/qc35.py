@@ -70,9 +70,9 @@ FEATURES = {
 }
 
 PRESET_MODES = {
-    "high":  {"idx": 0, "description": "High — full noise cancellation"},
-    "low":   {"idx": 1, "description": "Low — reduced noise cancellation"},
-    "off":   {"idx": 2, "description": "Off — no noise cancellation"},
+    "high": {"idx": 0, "description": "High — full noise cancellation"},
+    "low": {"idx": 1, "description": "Low — reduced noise cancellation"},
+    "off": {"idx": 2, "description": "Off — no noise cancellation"},
 }
 
 MODE_BY_IDX = {m["idx"]: name for name, m in PRESET_MODES.items()}

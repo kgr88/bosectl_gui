@@ -1,7 +1,6 @@
 """Device registry for BMAP-capable devices."""
 
-from . import qc_ultra2
-from . import qc35
+from . import qc35, qc_ultra2
 
 # Registry of supported devices keyed by type string.
 DEVICES = {
@@ -26,11 +25,11 @@ def get_device(device_type):
         BmapError: If the device type is not supported.
     """
     from ..errors import BmapError
+
     if device_type not in DEVICES:
         raise BmapError(
-            "Unknown device type '%s'. Supported: %s" % (
-                device_type, ", ".join(sorted(DEVICES.keys()))
-            )
+            "Unknown device type '%s'. Supported: %s"
+            % (device_type, ", ".join(sorted(DEVICES.keys())))
         )
     return DEVICES[device_type]
 

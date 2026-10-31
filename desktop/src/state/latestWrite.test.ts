@@ -7,7 +7,10 @@ describe("LatestWriteQueue", () => {
     const writes: number[] = [];
     const commits: number[] = [];
     const queue = new LatestWriteQueue(
-      async (value: number) => { writes.push(value); return value; },
+      async (value: number) => {
+        writes.push(value);
+        return value;
+      },
       (value) => commits.push(value),
       () => undefined,
       300,
@@ -26,7 +29,9 @@ describe("LatestWriteQueue", () => {
     vi.useFakeTimers();
     const failures: string[] = [];
     const queue = new LatestWriteQueue(
-      async () => { throw new Error("failed"); },
+      async () => {
+        throw new Error("failed");
+      },
       () => undefined,
       (error) => failures.push(String(error)),
       10,
@@ -41,7 +46,10 @@ describe("LatestWriteQueue", () => {
     vi.useFakeTimers();
     const writes: number[] = [];
     const queue = new LatestWriteQueue(
-      async (value: number) => { writes.push(value); return value; },
+      async (value: number) => {
+        writes.push(value);
+        return value;
+      },
       () => undefined,
       () => undefined,
       10,

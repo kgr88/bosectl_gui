@@ -5,12 +5,11 @@ Usage (from python/tools): python bmap-capture.py AA:BB:CC:DD:EE:FF
 """
 
 import argparse
-import socket
-import time
 import json
 import os
 import re
-import sys
+import socket
+import time
 
 CHANNEL = 2
 CAPTURE_DIR = os.path.normpath(
@@ -24,20 +23,66 @@ def mac_address(text):
         raise argparse.ArgumentTypeError(f"expected AA:BB:CC:DD:EE:FF, got {text!r}")
     return text
 
+
 # All known-responding functions from our scan
 FUNCTIONS = [
-    (0, 0), (0, 1), (0, 2), (0, 3), (0, 5), (0, 6), (0, 7),
-    (0, 12), (0, 15), (0, 17), (0, 23),
-    (1, 0), (1, 2), (1, 3), (1, 5), (1, 7), (1, 9), (1, 10),
-    (1, 11), (1, 12), (1, 24), (1, 27),
-    (2, 0), (2, 2), (2, 5), (2, 16), (2, 21),
-    (3, 0), (3, 1), (3, 4), (3, 6), (3, 7), (3, 15), (3, 16),
-    (4, 0), (4, 1), (4, 4), (4, 8), (4, 9), (4, 14), (4, 18),
-    (5, 0), (5, 1), (5, 3), (5, 4), (5, 5), (5, 7), (5, 13), (5, 17),
+    (0, 0),
+    (0, 1),
+    (0, 2),
+    (0, 3),
+    (0, 5),
+    (0, 6),
+    (0, 7),
+    (0, 12),
+    (0, 15),
+    (0, 17),
+    (0, 23),
+    (1, 0),
+    (1, 2),
+    (1, 3),
+    (1, 5),
+    (1, 7),
+    (1, 9),
+    (1, 10),
+    (1, 11),
+    (1, 12),
+    (1, 24),
+    (1, 27),
+    (2, 0),
+    (2, 2),
+    (2, 5),
+    (2, 16),
+    (2, 21),
+    (3, 0),
+    (3, 1),
+    (3, 4),
+    (3, 6),
+    (3, 7),
+    (3, 15),
+    (3, 16),
+    (4, 0),
+    (4, 1),
+    (4, 4),
+    (4, 8),
+    (4, 9),
+    (4, 14),
+    (4, 18),
+    (5, 0),
+    (5, 1),
+    (5, 3),
+    (5, 4),
+    (5, 5),
+    (5, 7),
+    (5, 13),
+    (5, 17),
     (6, 0),
-    (7, 0), (7, 1), (7, 4),
-    (8, 7), (8, 8),
-    (9, 0), (9, 2),
+    (7, 0),
+    (7, 1),
+    (7, 4),
+    (8, 7),
+    (8, 8),
+    (9, 0),
+    (9, 2),
 ]
 
 
@@ -58,10 +103,10 @@ def read_all(sock):
             resp = sock.recv(4096)
             rop = resp[2] & 0x0F
             rlen = resp[3]
-            payload = resp[4:4+rlen]
+            payload = resp[4 : 4 + rlen]
             if rop != 4:  # not an error
                 state[(block, func)] = payload.hex()
-        except socket.timeout:
+        except TimeoutError:
             pass
         except (BrokenPipeError, ConnectionResetError, OSError):
             return state  # connection lost, return what we have
@@ -81,7 +126,7 @@ def diff_states(before, after):
 
 
 def slugify(text):
-    return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')[:50]
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:50]
 
 
 def main(mac):
@@ -94,7 +139,7 @@ def main(mac):
 
     while True:
         desc = input("\nWhat setting will you toggle? (or 'quit'): ").strip()
-        if desc.lower() in ('quit', 'q', 'exit'):
+        if desc.lower() in ("quit", "q", "exit"):
             break
         if not desc:
             continue
@@ -104,7 +149,7 @@ def main(mac):
         filename = f"{ts}_{slug}.json"
         filepath = os.path.join(CAPTURE_DIR, filename)
 
-        print(f"\nConnecting to Fargo...", end=" ", flush=True)
+        print("\nConnecting to Fargo...", end=" ", flush=True)
         try:
             sock = connect(mac)
         except Exception as e:
@@ -138,14 +183,22 @@ def main(mac):
             # Read a snapshot every ~3 seconds
             if elapsed > len(snapshots) * 3:
                 snap = read_all(sock)
-                snapshots.append({"t": round(elapsed, 1), "label": f"t+{round(elapsed)}s", "state": snap})
+                snapshots.append(
+                    {
+                        "t": round(elapsed, 1),
+                        "label": f"t+{round(elapsed)}s",
+                        "state": snap,
+                    }
+                )
             time.sleep(0.2)
         print(f"\r  [{'#' * duration}] Done!                    ")
 
         # Read AFTER state
         print("Reading AFTER state...", end=" ", flush=True)
         after = read_all(sock)
-        snapshots.append({"t": round(time.time() - start, 1), "label": "after", "state": after})
+        snapshots.append(
+            {"t": round(time.time() - start, 1), "label": "after", "state": after}
+        )
         print(f"{len(after)} functions read")
 
         sock.close()
@@ -167,7 +220,10 @@ def main(mac):
                     if key in before and snap["state"][key] != before[key]:
                         all_changes.add(key)
             if all_changes:
-                print(f"  (but {len(all_changes)} transient changes seen in intermediate snapshots)")
+                print(
+                    f"  (but {len(all_changes)} transient changes seen in "
+                    "intermediate snapshots)"
+                )
 
         # Save
         save_data = {
@@ -194,5 +250,9 @@ def main(mac):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capture BMAP setting changes.")
-    parser.add_argument("mac", type=mac_address, help="Bluetooth address of the headphones, e.g. AA:BB:CC:DD:EE:FF")
+    parser.add_argument(
+        "mac",
+        type=mac_address,
+        help="Bluetooth address of the headphones, e.g. AA:BB:CC:DD:EE:FF",
+    )
     main(parser.parse_args().mac)

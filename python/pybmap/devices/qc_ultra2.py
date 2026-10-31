@@ -138,10 +138,10 @@ FEATURES = {
 # ── Mode Configuration ───────────────────────────────────────────────────────
 
 PRESET_MODES = {
-    "quiet":     {"idx": 0, "description": "Quiet — full ANC"},
-    "aware":     {"idx": 1, "description": "Aware — transparency"},
+    "quiet": {"idx": 0, "description": "Quiet — full ANC"},
+    "aware": {"idx": 1, "description": "Aware — transparency"},
     "immersion": {"idx": 2, "description": "Immersion — spatial audio, head tracking"},
-    "cinema":    {"idx": 3, "description": "Cinema — spatial audio, fixed stage"},
+    "cinema": {"idx": 3, "description": "Cinema — spatial audio, fixed stage"},
 }
 
 MODE_BY_IDX = {m["idx"]: name for name, m in PRESET_MODES.items()}

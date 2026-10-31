@@ -1,11 +1,12 @@
 """Tests for BmapConnection using a mock transport."""
 
 import pytest
+
 from pybmap.connection import BmapConnection
-from pybmap.protocol import bmap_packet
-from pybmap.constants import OP_GET, OP_SETGET, OP_STATUS, OP_RESULT, OP_ERROR
-from pybmap.errors import BmapError, BmapAuthError, BmapDeviceError
+from pybmap.constants import OP_ERROR, OP_SETGET, OP_STATUS
 from pybmap.devices import qc35, qc_ultra2
+from pybmap.errors import BmapAuthError, BmapDeviceError, BmapError
+from pybmap.protocol import bmap_packet
 
 
 class MockTransport:
@@ -18,7 +19,9 @@ class MockTransport:
 
     def add_response(self, fblock, func, op, payload):
         """Register a canned response for a given (fblock, func)."""
-        self.responses[(fblock, func)] = bytes([fblock, func, op, len(payload)]) + payload
+        self.responses[(fblock, func)] = (
+            bytes([fblock, func, op, len(payload)]) + payload
+        )
 
     def send_recv(self, packet, drain=False):
         self.sent.append(packet)
@@ -39,17 +42,27 @@ def mock_dev():
     """Create a BmapConnection with a mock transport and QC Ultra 2 config."""
     transport = MockTransport()
     # Set up standard responses from real capture data
-    transport.add_response(2, 2, OP_STATUS, bytes([80, 0xff, 0xff, 0x00]))  # battery 80%
+    transport.add_response(
+        2, 2, OP_STATUS, bytes([80, 0xFF, 0xFF, 0x00])
+    )  # battery 80%
     transport.add_response(0, 5, OP_STATUS, b"8.2.20+g34cf029")  # firmware
     transport.add_response(1, 2, OP_STATUS, bytes([0x00]) + b"Fargo")  # name
-    transport.add_response(1, 5, OP_STATUS, bytes([0x0b, 0x07, 0x03]))  # cnc: 7/10
-    transport.add_response(1, 7, OP_STATUS, bytes.fromhex("f60a0300f60afe01f60afa02"))  # eq
+    transport.add_response(1, 5, OP_STATUS, bytes([0x0B, 0x07, 0x03]))  # cnc: 7/10
+    transport.add_response(
+        1, 7, OP_STATUS, bytes.fromhex("f60a0300f60afe01f60afa02")
+    )  # eq
     transport.add_response(1, 10, OP_STATUS, bytes([0x07]))  # multipoint on
-    transport.add_response(1, 11, OP_STATUS, bytes([0x01, 0x02, 0x0f]))  # sidetone medium
+    transport.add_response(
+        1, 11, OP_STATUS, bytes([0x01, 0x02, 0x0F])
+    )  # sidetone medium
     transport.add_response(1, 24, OP_STATUS, bytes([0x01]))  # auto_pause on
     transport.add_response(1, 27, OP_STATUS, bytes([0x01]))  # auto_answer on
-    transport.add_response(1, 3, OP_STATUS, bytes([0x41, 0, 0, 0x81, 2, 0, 0]))  # prompts on, US English
-    transport.add_response(31, 3, OP_STATUS, bytes([0x00]))  # current mode: quiet (idx 0)
+    transport.add_response(
+        1, 3, OP_STATUS, bytes([0x41, 0, 0, 0x81, 2, 0, 0])
+    )  # prompts on, US English
+    transport.add_response(
+        31, 3, OP_STATUS, bytes([0x00])
+    )  # current mode: quiet (idx 0)
     transport.add_response(1, 9, OP_STATUS, bytes.fromhex("80090e00094002"))  # buttons
     return BmapConnection(transport, qc_ultra2)
 
@@ -142,7 +155,7 @@ class TestStatus:
     def test_tolerates_missing_features(self):
         """status() should not crash if a feature is unsupported."""
         transport = MockTransport()
-        transport.add_response(2, 2, OP_STATUS, bytes([50, 0xff, 0xff, 0x00]))
+        transport.add_response(2, 2, OP_STATUS, bytes([50, 0xFF, 0xFF, 0x00]))
         transport.add_response(31, 3, OP_STATUS, bytes([0x01]))
         # Only battery and current_mode respond; everything else errors
         dev = BmapConnection(transport, qc_ultra2)
@@ -173,25 +186,39 @@ class TestPublicAPI:
 
     def test_context_manager(self):
         transport = MockTransport()
-        transport.add_response(2, 2, OP_STATUS, bytes([70, 0xff, 0xff, 0x00]))
+        transport.add_response(2, 2, OP_STATUS, bytes([70, 0xFF, 0xFF, 0x00]))
         with BmapConnection(transport, qc_ultra2) as dev:
             assert dev.battery() == 70
         assert transport.closed is True
 
-    def test_save_new_profile_passes_name_and_auto_cnc_once(self, mock_dev, monkeypatch):
+    def test_save_new_profile_passes_name_and_auto_cnc_once(
+        self, mock_dev, monkeypatch
+    ):
         written = {}
         monkeypatch.setattr(mock_dev, "modes", lambda: {})
-        monkeypatch.setattr(mock_dev, "_write_mode", lambda slot, **values: written.update(slot=slot, **values))
+        monkeypatch.setattr(
+            mock_dev,
+            "_write_mode",
+            lambda slot, **values: written.update(slot=slot, **values),
+        )
 
         slot = mock_dev.save_profile(
-            name="Commute", cnc_level=6, auto_cnc=True, spatial=2,
-            wind_block=False, anc_toggle=True,
+            name="Commute",
+            cnc_level=6,
+            auto_cnc=True,
+            spatial=2,
+            wind_block=False,
+            anc_toggle=True,
         )
 
         assert slot == 4
         assert written == {
-            "slot": 4, "name": "Commute", "cnc_level": 6,
-            "auto_cnc": True, "spatial": 2, "wind_block": False,
+            "slot": 4,
+            "name": "Commute",
+            "cnc_level": 6,
+            "auto_cnc": True,
+            "spatial": 2,
+            "wind_block": False,
             "anc_toggle": True,
         }
 
@@ -229,5 +256,6 @@ class TestErrorHandling:
 class TestUnknownDevice:
     def test_get_device_unknown(self):
         from pybmap.devices import get_device
+
         with pytest.raises(BmapError, match="Unknown device type"):
             get_device("nonexistent")

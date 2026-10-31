@@ -15,7 +15,13 @@ describe("snapshot ordering", () => {
   });
 
   it("clears snapshot ordering when the sidecar session ends", () => {
-    const connected = { snapshot: version(4, 20), error: null, connection: "connected" as const };
-    expect(reduceDeviceEvent(connected, { event: "session_reset" })).toEqual(initialDeviceState);
+    const connected = {
+      snapshot: version(4, 20),
+      error: null,
+      connection: "connected" as const,
+    };
+    expect(reduceDeviceEvent(connected, { event: "session_reset" })).toEqual(
+      initialDeviceState,
+    );
   });
 });

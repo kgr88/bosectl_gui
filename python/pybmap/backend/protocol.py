@@ -4,7 +4,6 @@ import json
 import re
 from collections import namedtuple
 
-
 PROTOCOL_VERSION = 3
 MAX_LINE_BYTES = 64 * 1024
 MAX_REQUEST_ID_LENGTH = 128
@@ -97,7 +96,10 @@ def _strict_keys(value, required, optional, request_id, field="params"):
     if missing:
         _fail("%s is missing: %s" % (field, ", ".join(sorted(missing))), request_id)
     if extra:
-        _fail("%s contains unknown fields: %s" % (field, ", ".join(sorted(extra))), request_id)
+        _fail(
+            "%s contains unknown fields: %s" % (field, ", ".join(sorted(extra))),
+            request_id,
+        )
 
 
 def _generation(params, request_id):
@@ -108,7 +110,10 @@ def _generation(params, request_id):
 
 def _nonempty_string(value, field, request_id, maximum=256):
     if not isinstance(value, str) or not value or len(value) > maximum:
-        _fail("%s must be a non-empty string of at most %d characters" % (field, maximum), request_id)
+        _fail(
+            "%s must be a non-empty string of at most %d characters" % (field, maximum),
+            request_id,
+        )
 
 
 def _validate_target(target, request_id):
@@ -118,7 +123,9 @@ def _validate_target(target, request_id):
         _strict_keys(target, ("kind", "device_id"), (), request_id, "target")
         _nonempty_string(target["device_id"], "target.device_id", request_id)
     elif kind == "manual":
-        _strict_keys(target, ("kind", "address", "device_type"), (), request_id, "target")
+        _strict_keys(
+            target, ("kind", "address", "device_type"), (), request_id, "target"
+        )
         _nonempty_string(target["address"], "target.address", request_id, 64)
         if not re.match(r"^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$", target["address"]):
             _fail("target.address must be a Bluetooth MAC address", request_id)
@@ -157,9 +164,13 @@ def validate_params(method, params, request_id):
         _strict_keys(params, ("generation", "fields"), (), request_id)
         _generation(params, request_id)
         fields = params["fields"]
-        if (not isinstance(fields, list) or not fields or len(fields) > 2
-                or len(set(fields)) != len(fields)
-                or any(field not in ("battery", "noise_control") for field in fields)):
+        if (
+            not isinstance(fields, list)
+            or not fields
+            or len(fields) > 2
+            or len(set(fields)) != len(fields)
+            or any(field not in ("battery", "noise_control") for field in fields)
+        ):
             _fail("fields must contain battery and/or noise_control", request_id)
     elif method == "connect":
         _strict_keys(params, ("target",), (), request_id)
@@ -215,8 +226,8 @@ def parse_request_line(line):
     if isinstance(line, bytes):
         try:
             text = line.decode("utf-8")
-        except UnicodeDecodeError:
-            raise ProtocolError("INVALID_REQUEST", "request must be UTF-8")
+        except UnicodeDecodeError as exc:
+            raise ProtocolError("INVALID_REQUEST", "request must be UTF-8") from exc
     else:
         text = line
     if not isinstance(text, str):
@@ -230,19 +241,27 @@ def parse_request_line(line):
                 ValueError("non-finite JSON number: %s" % value)
             ),
         )
-    except (TypeError, ValueError):
-        raise ProtocolError("INVALID_REQUEST", "request is not valid JSON")
+    except (TypeError, ValueError) as exc:
+        raise ProtocolError("INVALID_REQUEST", "request is not valid JSON") from exc
     if not isinstance(message, dict):
         raise ProtocolError("INVALID_REQUEST", "request must be a JSON object")
 
     request_id = message.get("id") if isinstance(message.get("id"), str) else ""
     extra = set(message) - {"v", "id", "method", "params"}
     if extra:
-        _fail("request contains unknown fields: %s" % ", ".join(sorted(extra)), request_id, "INVALID_REQUEST")
+        _fail(
+            "request contains unknown fields: %s" % ", ".join(sorted(extra)),
+            request_id,
+            "INVALID_REQUEST",
+        )
     if message.get("v") != PROTOCOL_VERSION or isinstance(message.get("v"), bool):
         _fail("unsupported protocol version", request_id, "UNSUPPORTED_PROTOCOL")
     if not request_id or len(request_id) > MAX_REQUEST_ID_LENGTH:
-        _fail("id must be a non-empty string of at most 128 characters", "", "INVALID_REQUEST")
+        _fail(
+            "id must be a non-empty string of at most 128 characters",
+            "",
+            "INVALID_REQUEST",
+        )
     method = message.get("method")
     if method not in METHODS:
         _fail("unknown method", request_id, "UNKNOWN_METHOD")

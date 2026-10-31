@@ -2,8 +2,9 @@ import uuid
 
 from pybmap.catalog import BMAP_UUID
 from pybmap.discovery import (
-    _device_from_name, _format_bluetooth_address, _guid_bytes_to_text,
-    discover_devices,
+    _device_from_name,
+    _format_bluetooth_address,
+    _guid_bytes_to_text,
 )
 
 

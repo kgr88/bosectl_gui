@@ -1,5 +1,3 @@
-import socket
-
 import pytest
 
 from pybmap.errors import BmapConnectionError
@@ -17,7 +15,7 @@ class FakeSocket:
 
     def recv(self, size):
         if not self.chunks:
-            raise socket.timeout()
+            raise TimeoutError()
         item = self.chunks.pop(0)
         if isinstance(item, BaseException):
             raise item
@@ -56,7 +54,7 @@ def test_concatenated_frames_are_buffered_for_the_next_request():
 def test_drain_collects_frames_and_restores_timeout():
     first = b"\x01\x01\x03\x01A"
     second = b"\x01\x01\x03\x01B"
-    transport = transport_with([first + second, socket.timeout()])
+    transport = transport_with([first + second, TimeoutError()])
     assert transport.send_recv(b"request", drain=True) == first + second
     assert transport._sock.timeout == 3.0
 
@@ -67,12 +65,15 @@ def test_truncated_frame_reports_device_loss():
         transport.send_recv(b"request")
 
 
-@pytest.mark.parametrize("winerror,code", [
-    (10050, "BLUETOOTH_DISABLED"),
-    (10061, "SERVICE_NOT_FOUND"),
-    (10065, "DEVICE_NOT_FOUND"),
-    (10054, "DEVICE_LOST"),
-])
+@pytest.mark.parametrize(
+    "winerror,code",
+    [
+        (10050, "BLUETOOTH_DISABLED"),
+        (10061, "SERVICE_NOT_FOUND"),
+        (10065, "DEVICE_NOT_FOUND"),
+        (10054, "DEVICE_LOST"),
+    ],
+)
 def test_windows_socket_categories_remain_actionable(winerror, code):
     error = OSError()
     error.winerror = winerror

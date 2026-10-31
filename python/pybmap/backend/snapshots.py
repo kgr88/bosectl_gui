@@ -1,10 +1,10 @@
 """Immutable values exposed by the backend instead of live Python objects."""
 
 from collections import namedtuple
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class ConnectionState(str, Enum):
+class ConnectionState(StrEnum):
     DISCONNECTED = "disconnected"
     DISCOVERING = "discovering"
     CONNECTING = "connecting"
@@ -14,7 +14,7 @@ class ConnectionState(str, Enum):
     ERROR = "error"
 
 
-class NoiseControlKind(str, Enum):
+class NoiseControlKind(StrEnum):
     CNC = "cnc"
     ANR = "anr"
     MODE = "mode"
@@ -26,9 +26,7 @@ DeviceIdentity = namedtuple(
 )
 BatteryStatus = namedtuple("BatteryStatus", ["percent", "charging"])
 FirmwareInfo = namedtuple("FirmwareInfo", ["version"])
-ConnectionStatus = namedtuple(
-    "ConnectionStatus", ["state", "reason", "rfcomm_channel"]
-)
+ConnectionStatus = namedtuple("ConnectionStatus", ["state", "reason", "rfcomm_channel"])
 Choice = namedtuple("Choice", ["value", "label"])
 RangeCapability = namedtuple("RangeCapability", ["minimum", "maximum", "step"])
 NoiseControlCapability = namedtuple(
@@ -41,9 +39,7 @@ SettingCapability = namedtuple(
     "SettingCapability",
     ["key", "label", "kind", "writable", "options", "minimum", "maximum", "step"],
 )
-ProfileCapability = namedtuple(
-    "ProfileCapability", ["maximum", "supports_delete"]
-)
+ProfileCapability = namedtuple("ProfileCapability", ["maximum", "supports_delete"])
 DeviceCapabilities = namedtuple(
     "DeviceCapabilities",
     ["noise_control", "equalizer", "settings", "profiles"],

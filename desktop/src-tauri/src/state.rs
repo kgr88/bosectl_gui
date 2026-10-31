@@ -20,6 +20,130 @@ pub struct AppState {
     pub _single_instance: SingleInstanceGuard,
 }
 
+impl AppState {
+    pub fn new(single_instance: SingleInstanceGuard) -> Self {
+        Self {
+            backend: BackendClient::default(),
+            generation: AtomicU64::new(0),
+            revision: AtomicU64::new(0),
+            connection_attempt: AtomicU64::new(0),
+            snapshot: Mutex::new(None),
+            quitting: AtomicBool::new(false),
+            shutdown_complete: AtomicBool::new(false),
+            _single_instance: single_instance,
+        }
+    }
+
+    pub fn begin_connection(&self) -> u64 {
+        self.clear_snapshot();
+        self.connection_attempt.fetch_add(1, Ordering::AcqRel) + 1
+    }
+
+    pub fn accept_connection_snapshot(
+        &self,
+        snapshot: DeviceSnapshot,
+        attempt: u64,
+    ) -> Result<DeviceSnapshot, ApiError> {
+        snapshot.validate_wire()?;
+        if attempt != self.connection_attempt.load(Ordering::Acquire) {
+            return Err(ApiError::new(
+                ErrorCode::StaleGeneration,
+                "A newer connection attempt has replaced this one",
+                false,
+            ));
+        }
+        // A stopped sidecar starts its generation and revision counters over.
+        // A successful connect establishes a new ordering epoch, so its first
+        // snapshot must not be compared with the previous sidecar's counters.
+        self.generation
+            .store(snapshot.generation, Ordering::Release);
+        self.revision.store(snapshot.revision, Ordering::Release);
+        *self
+            .snapshot
+            .lock()
+            .map_err(|_| ApiError::internal("device state is unavailable"))? =
+            Some(snapshot.clone());
+        Ok(snapshot)
+    }
+
+    pub fn validate_generation(&self, generation: u64) -> Result<(), ApiError> {
+        let current = self.generation.load(Ordering::Acquire);
+        if current != 0 && generation != current {
+            Err(ApiError::new(
+                ErrorCode::StaleGeneration,
+                "The request belongs to an older device connection",
+                false,
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn accept_snapshot(&self, snapshot: DeviceSnapshot) -> Result<DeviceSnapshot, ApiError> {
+        snapshot.validate_wire()?;
+        let current = self.generation.load(Ordering::Acquire);
+        let revision = self.revision.load(Ordering::Acquire);
+        if snapshot.generation < current
+            || (snapshot.generation == current && snapshot.revision < revision)
+        {
+            return Err(ApiError::new(
+                ErrorCode::StaleGeneration,
+                "The backend returned a stale device snapshot",
+                false,
+            ));
+        }
+        self.generation
+            .store(snapshot.generation, Ordering::Release);
+        self.revision.store(snapshot.revision, Ordering::Release);
+        *self
+            .snapshot
+            .lock()
+            .map_err(|_| ApiError::internal("device state is unavailable"))? =
+            Some(snapshot.clone());
+        Ok(snapshot)
+    }
+
+    pub fn current_snapshot(&self) -> Result<Option<DeviceSnapshot>, ApiError> {
+        self.snapshot
+            .lock()
+            .map(|snapshot| snapshot.clone())
+            .map_err(|_| ApiError::internal("device state is unavailable"))
+    }
+
+    pub fn clear_snapshot(&self) {
+        if let Ok(mut snapshot) = self.snapshot.lock() {
+            *snapshot = None;
+        }
+    }
+
+    pub fn record_backend_event(&self, event: &DeviceEvent) {
+        match event {
+            DeviceEvent::SnapshotChanged { data } => {
+                let _ = self.accept_snapshot((**data).clone());
+            }
+            DeviceEvent::ConnectionChanged { data } => {
+                let generation = self.generation.load(Ordering::Acquire);
+                let revision = self.revision.load(Ordering::Acquire);
+                if data.generation > generation
+                    || (data.generation == generation && data.revision >= revision)
+                {
+                    self.generation.store(data.generation, Ordering::Release);
+                    self.revision.store(data.revision, Ordering::Release);
+                    if data.state != ConnectionState::Connected {
+                        self.clear_snapshot();
+                    }
+                }
+            }
+            DeviceEvent::BackendError { data }
+                if matches!(data.code, ErrorCode::BackendCrashed | ErrorCode::DeviceLost) =>
+            {
+                self.clear_snapshot();
+            }
+            DeviceEvent::BackendError { .. } => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,8 +163,14 @@ mod tests {
     fn rejects_old_generations_and_revisions() {
         let state = AppState::new(SingleInstanceGuard::for_test());
         state.accept_snapshot(snapshot(2, 4)).unwrap();
-        assert_eq!(state.accept_snapshot(snapshot(1, 99)).unwrap_err().code, ErrorCode::StaleGeneration);
-        assert_eq!(state.accept_snapshot(snapshot(2, 3)).unwrap_err().code, ErrorCode::StaleGeneration);
+        assert_eq!(
+            state.accept_snapshot(snapshot(1, 99)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
+        assert_eq!(
+            state.accept_snapshot(snapshot(2, 3)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
         assert!(state.accept_snapshot(snapshot(3, 0)).is_ok());
     }
 
@@ -83,121 +213,5 @@ mod tests {
             },
         });
         assert!(state.current_snapshot().unwrap().is_none());
-    }
-}
-
-impl AppState {
-    pub fn new(single_instance: SingleInstanceGuard) -> Self {
-        Self {
-            backend: BackendClient::default(),
-            generation: AtomicU64::new(0),
-            revision: AtomicU64::new(0),
-            connection_attempt: AtomicU64::new(0),
-            snapshot: Mutex::new(None),
-            quitting: AtomicBool::new(false),
-            shutdown_complete: AtomicBool::new(false),
-            _single_instance: single_instance,
-        }
-    }
-
-    pub fn begin_connection(&self) -> u64 {
-        self.clear_snapshot();
-        self.connection_attempt.fetch_add(1, Ordering::AcqRel) + 1
-    }
-
-    pub fn accept_connection_snapshot(
-        &self,
-        snapshot: DeviceSnapshot,
-        attempt: u64,
-    ) -> Result<DeviceSnapshot, ApiError> {
-        snapshot.validate_wire()?;
-        if attempt != self.connection_attempt.load(Ordering::Acquire) {
-            return Err(ApiError::new(
-                ErrorCode::StaleGeneration,
-                "A newer connection attempt has replaced this one",
-                false,
-            ));
-        }
-        // A stopped sidecar starts its generation and revision counters over.
-        // A successful connect establishes a new ordering epoch, so its first
-        // snapshot must not be compared with the previous sidecar's counters.
-        self.generation.store(snapshot.generation, Ordering::Release);
-        self.revision.store(snapshot.revision, Ordering::Release);
-        *self.snapshot.lock().map_err(|_| ApiError::internal("device state is unavailable"))? =
-            Some(snapshot.clone());
-        Ok(snapshot)
-    }
-
-    pub fn validate_generation(&self, generation: u64) -> Result<(), ApiError> {
-        let current = self.generation.load(Ordering::Acquire);
-        if current != 0 && generation != current {
-            Err(ApiError::new(
-                ErrorCode::StaleGeneration,
-                "The request belongs to an older device connection",
-                false,
-            ))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn accept_snapshot(&self, snapshot: DeviceSnapshot) -> Result<DeviceSnapshot, ApiError> {
-        snapshot.validate_wire()?;
-        let current = self.generation.load(Ordering::Acquire);
-        let revision = self.revision.load(Ordering::Acquire);
-        if snapshot.generation < current
-            || (snapshot.generation == current && snapshot.revision < revision)
-        {
-            return Err(ApiError::new(
-                ErrorCode::StaleGeneration,
-                "The backend returned a stale device snapshot",
-                false,
-            ));
-        }
-        self.generation.store(snapshot.generation, Ordering::Release);
-        self.revision.store(snapshot.revision, Ordering::Release);
-        *self.snapshot.lock().map_err(|_| ApiError::internal("device state is unavailable"))? =
-            Some(snapshot.clone());
-        Ok(snapshot)
-    }
-
-    pub fn current_snapshot(&self) -> Result<Option<DeviceSnapshot>, ApiError> {
-        self.snapshot
-            .lock()
-            .map(|snapshot| snapshot.clone())
-            .map_err(|_| ApiError::internal("device state is unavailable"))
-    }
-
-    pub fn clear_snapshot(&self) {
-        if let Ok(mut snapshot) = self.snapshot.lock() {
-            *snapshot = None;
-        }
-    }
-
-    pub fn record_backend_event(&self, event: &DeviceEvent) {
-        match event {
-            DeviceEvent::SnapshotChanged { data } => {
-                let _ = self.accept_snapshot(data.clone());
-            }
-            DeviceEvent::ConnectionChanged { data } => {
-                let generation = self.generation.load(Ordering::Acquire);
-                let revision = self.revision.load(Ordering::Acquire);
-                if data.generation > generation
-                    || (data.generation == generation && data.revision >= revision)
-                {
-                    self.generation.store(data.generation, Ordering::Release);
-                    self.revision.store(data.revision, Ordering::Release);
-                    if data.state != ConnectionState::Connected {
-                        self.clear_snapshot();
-                    }
-                }
-            }
-            DeviceEvent::BackendError { data }
-                if matches!(data.code, ErrorCode::BackendCrashed | ErrorCode::DeviceLost) =>
-            {
-                self.clear_snapshot();
-            }
-            DeviceEvent::BackendError { .. } => {}
-        }
     }
 }
