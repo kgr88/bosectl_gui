@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  launch-editor-middleware: '>=2.14.2'
+
 importers:
 
   .:
