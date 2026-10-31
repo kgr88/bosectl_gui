@@ -1,12 +1,11 @@
 # pybmap
 
-Python library and `bosectl` CLI for the Bose BMAP protocol over Bluetooth
+Python library for the Bose BMAP protocol over Bluetooth
 RFCOMM. It controls noise cancellation, EQ, profiles, and device settings on
 paired Bose headphones.
 
 This directory holds the Python side of the project. See the
-[repository README](../README.md) for the device list, the protocol notes, and
-the Rust and C++ libraries.
+[repository README](../README.md) for the device list and the protocol notes.
 
 ## Install
 
@@ -24,15 +23,6 @@ with pybmap.connect() as dev:
     print(dev.battery())
     dev.set_cnc(8)          # QC Ultra 2: CNC level 0-10
     dev.set_eq(3, 0, -2)    # Bass +3, mid flat, treble -2
-```
-
-## CLI
-
-```bash
-bosectl status              # Model, battery, mode, settings
-bosectl cnc 7               # Noise cancellation level (QC Ultra 2)
-bosectl anr high            # Noise cancellation mode (QC35)
-bosectl eq 3 0 -2           # EQ: bass/mid/treble
 ```
 
 ## Backend sidecar
