@@ -430,16 +430,12 @@ parser tests (parsers are pure functions). Connection tests use a
 
 ## Building & Testing
 
-The top-level `Makefile` builds and tests the Python library.
-Prerequisite: Python 3.
+The Python library builds and tests with `pip` and `pytest`.
+Prerequisite: Python 3. Run these commands from `python/`.
 
-| Target | Description |
-|--------|-------------|
-| `make test` | Run all tests |
-| `make python-setup` | Create the virtualenv and install the package |
-| `make python-test` | Python unit tests |
-| `make python-lint` | Compile-check the Python modules |
-| `make python-build` | sdist and wheel in `python/dist/` |
-| `make integration` | Integration tests (requires paired Bluetooth device) |
-| `make clean` | Remove build artifacts and the virtualenv |
-| `make help` | Show all targets |
+| Command | Description |
+|---------|-------------|
+| `python -m pip install -e .` | Install the package in editable mode |
+| `pytest` | Run all unit tests |
+| `pytest --integration` | Run integration tests (requires paired Bluetooth device) |
+| `python -m build` | sdist and wheel in `python/dist/` |

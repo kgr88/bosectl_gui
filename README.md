@@ -94,11 +94,11 @@ pybmap.known_devices()       # full catalog
 
 ```bash
 git clone https://github.com/aaronsb/bosectl.git
-cd bosectl
-make test          # Run the Python tests
+cd bosectl/python
+python -m pip install -e .
+python -m pip install pytest
+pytest             # Run the Python tests
 ```
-
-See `make help` for all targets.
 
 The backend auto-detects paired Bose devices by their BMAP service UUID —
 no MAC address configuration needed, even with renamed headphones.
@@ -150,15 +150,16 @@ Full protocol reference: **[NOTES.md](NOTES.md)**
 ├── python/pybmap/       # Python library and backend sidecar
 ├── docs/                # Architecture guide, device docs
 ├── NOTES.md             # Protocol reverse engineering notes
-├── Makefile             # Build and test
 └── fixtures/            # Captured protocol data
 ```
 
 ## Building & Testing
 
+Run these commands from `python/`:
+
 ```bash
-make test                       # All Python tests
-make clean                      # Remove all build artifacts
+pytest                          # All Python tests
+python -m build                 # sdist and wheel in python/dist/
 ```
 
 ## License

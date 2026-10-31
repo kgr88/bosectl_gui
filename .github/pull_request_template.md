@@ -15,6 +15,6 @@
 
 ## Checklist
 
-- [ ] Tests pass (`make test`)
+- [ ] Tests pass (`pytest` in `python/`)
 - [ ] Protocol notes updated in NOTES.md (if applicable)
 - [ ] Architecture docs updated (if applicable)
