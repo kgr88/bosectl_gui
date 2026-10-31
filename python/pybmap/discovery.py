@@ -17,8 +17,16 @@ from .catalog import BMAP_UUID, lookup_device
 
 DiscoveredDevice = namedtuple(
     "DiscoveredDevice",
-    ["address", "name", "service_uuid", "rfcomm_channel", "product_id",
-     "device_type", "paired", "connected"],
+    [
+        "address",
+        "name",
+        "service_uuid",
+        "rfcomm_channel",
+        "product_id",
+        "device_type",
+        "paired",
+        "connected",
+    ],
 )
 
 
@@ -52,12 +60,17 @@ def _device_from_name(name):
     """Resolve only model names that unambiguously select a supported config."""
     normalized = " ".join(name.lower().split())
     if "quietcomfort 35" in normalized or re.search(r"\bqc35(?: ii)?\b", normalized):
-        product_id = 0x4020 if (" ii" in normalized or "qc35 ii" in normalized) else 0x400C
+        product_id = (
+            0x4020 if (" ii" in normalized or "qc35 ii" in normalized) else 0x400C
+        )
         return product_id, "qc35"
     if re.search(r"\bqc ultra 2(?: hp| headphones)?\b", normalized):
         return 0x4082, "qc_ultra2"
     if ("quietcomfort ultra" in normalized or "qc ultra" in normalized) and (
-            "2nd gen" in normalized or "second gen" in normalized or normalized.endswith(" 2")):
+        "2nd gen" in normalized
+        or "second gen" in normalized
+        or normalized.endswith(" 2")
+    ):
         return (0x4062 if "earbud" in normalized else 0x4082), "qc_ultra2"
     return None, None
 
@@ -81,25 +94,43 @@ def _scan_windows_devices():
         return []
 
     class SYSTEMTIME(ctypes.Structure):
-        _fields_ = [(name, wintypes.WORD) for name in (
-            "year", "month", "day_of_week", "day", "hour", "minute", "second", "milliseconds"
-        )]
+        _fields_ = [
+            (name, wintypes.WORD)
+            for name in (
+                "year",
+                "month",
+                "day_of_week",
+                "day",
+                "hour",
+                "minute",
+                "second",
+                "milliseconds",
+            )
+        ]
 
     class BLUETOOTH_DEVICE_INFO(ctypes.Structure):
         _fields_ = [
-            ("dwSize", wintypes.DWORD), ("Address", ctypes.c_ulonglong),
-            ("ulClassofDevice", wintypes.ULONG), ("fConnected", wintypes.BOOL),
-            ("fRemembered", wintypes.BOOL), ("fAuthenticated", wintypes.BOOL),
-            ("stLastSeen", SYSTEMTIME), ("stLastUsed", SYSTEMTIME),
+            ("dwSize", wintypes.DWORD),
+            ("Address", ctypes.c_ulonglong),
+            ("ulClassofDevice", wintypes.ULONG),
+            ("fConnected", wintypes.BOOL),
+            ("fRemembered", wintypes.BOOL),
+            ("fAuthenticated", wintypes.BOOL),
+            ("stLastSeen", SYSTEMTIME),
+            ("stLastUsed", SYSTEMTIME),
             ("szName", wintypes.WCHAR * 248),
         ]
 
     class BLUETOOTH_DEVICE_SEARCH_PARAMS(ctypes.Structure):
         _fields_ = [
-            ("dwSize", wintypes.DWORD), ("fReturnAuthenticated", wintypes.BOOL),
-            ("fReturnRemembered", wintypes.BOOL), ("fReturnUnknown", wintypes.BOOL),
-            ("fReturnConnected", wintypes.BOOL), ("fIssueInquiry", wintypes.BOOL),
-            ("cTimeoutMultiplier", ctypes.c_ubyte), ("hRadio", wintypes.HANDLE),
+            ("dwSize", wintypes.DWORD),
+            ("fReturnAuthenticated", wintypes.BOOL),
+            ("fReturnRemembered", wintypes.BOOL),
+            ("fReturnUnknown", wintypes.BOOL),
+            ("fReturnConnected", wintypes.BOOL),
+            ("fIssueInquiry", wintypes.BOOL),
+            ("cTimeoutMultiplier", ctypes.c_ubyte),
+            ("hRadio", wintypes.HANDLE),
         ]
 
     class BLUETOOTH_FIND_RADIO_PARAMS(ctypes.Structure):
@@ -112,11 +143,13 @@ def _scan_windows_devices():
     # default truncates 64-bit Windows handles (or raises OverflowError before
     # the API is called).
     bth.BluetoothFindFirstRadio.argtypes = [
-        ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS), ctypes.POINTER(wintypes.HANDLE)
+        ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS),
+        ctypes.POINTER(wintypes.HANDLE),
     ]
     bth.BluetoothFindFirstRadio.restype = wintypes.HANDLE
     bth.BluetoothFindNextRadio.argtypes = [
-        wintypes.HANDLE, ctypes.POINTER(wintypes.HANDLE)
+        wintypes.HANDLE,
+        ctypes.POINTER(wintypes.HANDLE),
     ]
     bth.BluetoothFindNextRadio.restype = wintypes.BOOL
     bth.BluetoothFindFirstDevice.argtypes = [
@@ -125,7 +158,8 @@ def _scan_windows_devices():
     ]
     bth.BluetoothFindFirstDevice.restype = wintypes.HANDLE
     bth.BluetoothFindNextDevice.argtypes = [
-        wintypes.HANDLE, ctypes.POINTER(BLUETOOTH_DEVICE_INFO)
+        wintypes.HANDLE,
+        ctypes.POINTER(BLUETOOTH_DEVICE_INFO),
     ]
     bth.BluetoothFindNextDevice.restype = wintypes.BOOL
     bth.BluetoothFindRadioClose.argtypes = [wintypes.HANDLE]
@@ -141,9 +175,13 @@ def _scan_windows_devices():
     bth.BluetoothEnumerateInstalledServices.restype = wintypes.DWORD
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
-    radio_params = BLUETOOTH_FIND_RADIO_PARAMS(ctypes.sizeof(BLUETOOTH_FIND_RADIO_PARAMS))
+    radio_params = BLUETOOTH_FIND_RADIO_PARAMS(
+        ctypes.sizeof(BLUETOOTH_FIND_RADIO_PARAMS)
+    )
     radio = wintypes.HANDLE()
-    radio_find = bth.BluetoothFindFirstRadio(ctypes.byref(radio_params), ctypes.byref(radio))
+    radio_find = bth.BluetoothFindFirstRadio(
+        ctypes.byref(radio_params), ctypes.byref(radio)
+    )
     if not radio_find:
         raise BluetoothDiscoveryError(
             "BLUETOOTH_UNAVAILABLE", "No enabled Windows Bluetooth radio is available"
@@ -153,12 +191,20 @@ def _scan_windows_devices():
     try:
         while True:
             search = BLUETOOTH_DEVICE_SEARCH_PARAMS(
-                ctypes.sizeof(BLUETOOTH_DEVICE_SEARCH_PARAMS), True, True, False,
-                True, False, 1, radio,
+                ctypes.sizeof(BLUETOOTH_DEVICE_SEARCH_PARAMS),
+                True,
+                True,
+                False,
+                True,
+                False,
+                1,
+                radio,
             )
             info = BLUETOOTH_DEVICE_INFO()
             info.dwSize = ctypes.sizeof(info)
-            device_find = bth.BluetoothFindFirstDevice(ctypes.byref(search), ctypes.byref(info))
+            device_find = bth.BluetoothFindFirstDevice(
+                ctypes.byref(search), ctypes.byref(info)
+            )
             if device_find:
                 try:
                     while True:
@@ -169,14 +215,22 @@ def _scan_windows_devices():
                                 product_id, device_type = _device_from_name(info.szName)
                                 channels = resolve_rfcomm_channels(address)
                                 records[address] = DiscoveredDevice(
-                                    address, info.szName or "Bose device", BMAP_UUID,
-                                    channels[0] if channels else _channel_for_type(device_type),
-                                    product_id, device_type,
-                                    True, bool(info.fConnected),
+                                    address,
+                                    info.szName or "Bose device",
+                                    BMAP_UUID,
+                                    channels[0]
+                                    if channels
+                                    else _channel_for_type(device_type),
+                                    product_id,
+                                    device_type,
+                                    True,
+                                    bool(info.fConnected),
                                 )
                         info = BLUETOOTH_DEVICE_INFO()
                         info.dwSize = ctypes.sizeof(info)
-                        if not bth.BluetoothFindNextDevice(device_find, ctypes.byref(info)):
+                        if not bth.BluetoothFindNextDevice(
+                            device_find, ctypes.byref(info)
+                        ):
                             break
                 finally:
                     bth.BluetoothFindDeviceClose(device_find)
@@ -205,10 +259,14 @@ def _windows_service_guids(bth, radio, device_info):
     )
     if result != 0:
         if result == 5:
-            raise BluetoothDiscoveryError("ACCESS_DENIED", "Windows denied Bluetooth service discovery")
+            raise BluetoothDiscoveryError(
+                "ACCESS_DENIED", "Windows denied Bluetooth service discovery"
+            )
         return set()
     raw = bytes(guid_array)
-    return {_guid_bytes_to_text(raw[i:i + 16]) for i in range(0, count.value * 16, 16)}
+    return {
+        _guid_bytes_to_text(raw[i : i + 16]) for i in range(0, count.value * 16, 16)
+    }
 
 
 def _guid_bytes_to_text(raw):
@@ -217,7 +275,11 @@ def _guid_bytes_to_text(raw):
     data3 = int.from_bytes(raw[6:8], "little")
     data4 = raw[8:]
     return "%08x-%04x-%04x-%s-%s" % (
-        data1, data2, data3, data4[:2].hex(), data4[2:].hex()
+        data1,
+        data2,
+        data3,
+        data4[:2].hex(),
+        data4[2:].hex(),
     )
 
 
@@ -234,8 +296,10 @@ def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
 
     class GUID(ctypes.Structure):
         _fields_ = [
-            ("Data1", wintypes.DWORD), ("Data2", wintypes.WORD),
-            ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8),
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
         ]
 
     class SOCKADDR(ctypes.Structure):
@@ -254,35 +318,51 @@ def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
 
     class CSADDR_INFO(ctypes.Structure):
         _fields_ = [
-            ("local_addr", SOCKET_ADDRESS), ("remote_addr", SOCKET_ADDRESS),
-            ("socket_type", ctypes.c_int), ("protocol", ctypes.c_int),
+            ("local_addr", SOCKET_ADDRESS),
+            ("remote_addr", SOCKET_ADDRESS),
+            ("socket_type", ctypes.c_int),
+            ("protocol", ctypes.c_int),
         ]
 
     class WSAQUERYSET(ctypes.Structure):
         _fields_ = [
-            ("size", wintypes.DWORD), ("service_instance_name", wintypes.LPWSTR),
+            ("size", wintypes.DWORD),
+            ("service_instance_name", wintypes.LPWSTR),
             ("service_class_id", ctypes.POINTER(GUID)),
-            ("version", ctypes.c_void_p), ("comment", wintypes.LPWSTR),
-            ("namespace", wintypes.DWORD), ("namespace_provider_id", ctypes.c_void_p),
-            ("context", wintypes.LPWSTR), ("protocol_count", wintypes.DWORD),
-            ("protocols", ctypes.c_void_p), ("query_string", wintypes.LPWSTR),
+            ("version", ctypes.c_void_p),
+            ("comment", wintypes.LPWSTR),
+            ("namespace", wintypes.DWORD),
+            ("namespace_provider_id", ctypes.c_void_p),
+            ("context", wintypes.LPWSTR),
+            ("protocol_count", wintypes.DWORD),
+            ("protocols", ctypes.c_void_p),
+            ("query_string", wintypes.LPWSTR),
             ("address_count", wintypes.DWORD),
             ("addresses", ctypes.POINTER(CSADDR_INFO)),
-            ("output_flags", wintypes.DWORD), ("blob", ctypes.c_void_p),
+            ("output_flags", wintypes.DWORD),
+            ("blob", ctypes.c_void_p),
         ]
 
     ws2 = ctypes.WinDLL("ws2_32", use_last_error=True)
     ws2.WSAAddressToStringW.argtypes = [
-        ctypes.POINTER(SOCKADDR), wintypes.DWORD, ctypes.c_void_p,
-        wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD),
+        ctypes.POINTER(SOCKADDR),
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
     ]
     ws2.WSAAddressToStringW.restype = ctypes.c_int
     ws2.WSALookupServiceBeginW.argtypes = [
-        ctypes.POINTER(WSAQUERYSET), wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE),
+        ctypes.POINTER(WSAQUERYSET),
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.HANDLE),
     ]
     ws2.WSALookupServiceBeginW.restype = ctypes.c_int
     ws2.WSALookupServiceNextW.argtypes = [
-        wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p,
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.c_void_p,
     ]
     ws2.WSALookupServiceNextW.restype = ctypes.c_int
     ws2.WSALookupServiceEnd.argtypes = [wintypes.HANDLE]
@@ -294,10 +374,16 @@ def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
     sockaddr.bt_addr = int(address.replace(":", ""), 16)
     context_buffer = ctypes.create_unicode_buffer(128)
     context_length = wintypes.DWORD(len(context_buffer))
-    if ws2.WSAAddressToStringW(
-        ctypes.cast(ctypes.byref(sockaddr), ctypes.POINTER(SOCKADDR)),
-        ctypes.sizeof(sockaddr), None, context_buffer, ctypes.byref(context_length),
-    ) != 0:
+    if (
+        ws2.WSAAddressToStringW(
+            ctypes.cast(ctypes.byref(sockaddr), ctypes.POINTER(SOCKADDR)),
+            ctypes.sizeof(sockaddr),
+            None,
+            context_buffer,
+            ctypes.byref(context_length),
+        )
+        != 0
+    ):
         return []
 
     uuid_value = uuid.UUID(service_uuid)
@@ -317,9 +403,12 @@ def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
     lookup = wintypes.HANDLE()
     lup_return_addr = 0x0100
     control_flags = lup_return_addr | (0x1000 if flush_cache else 0)  # LUP_FLUSHCACHE
-    if ws2.WSALookupServiceBeginW(
-        ctypes.byref(query), control_flags, ctypes.byref(lookup)
-    ) != 0:
+    if (
+        ws2.WSALookupServiceBeginW(
+            ctypes.byref(query), control_flags, ctypes.byref(lookup)
+        )
+        != 0
+    ):
         return []
 
     channels = []
@@ -329,19 +418,29 @@ def resolve_rfcomm_channels(address, service_uuid=BMAP_UUID, flush_cache=True):
             result_buffer = ctypes.create_string_buffer(buffer_size)
             result_size = wintypes.DWORD(buffer_size)
             result = ws2.WSALookupServiceNextW(
-                lookup, lup_return_addr, ctypes.byref(result_size), result_buffer,
+                lookup,
+                lup_return_addr,
+                ctypes.byref(result_size),
+                result_buffer,
             )
             if result != 0:
                 error = ws2.WSAGetLastError()
-                if error == 10014 and result_size.value > buffer_size:  # WSAEFAULT: grow buffer
+                if (
+                    error == 10014 and result_size.value > buffer_size
+                ):  # WSAEFAULT: grow buffer
                     buffer_size = result_size.value
                     continue
                 break
-            result_query = ctypes.cast(result_buffer, ctypes.POINTER(WSAQUERYSET)).contents
+            result_query = ctypes.cast(
+                result_buffer, ctypes.POINTER(WSAQUERYSET)
+            ).contents
             for index in range(result_query.address_count):
                 info = result_query.addresses[index]
                 for socket_address in (info.local_addr, info.remote_addr):
-                    if not socket_address.lp_sockaddr or socket_address.length < ctypes.sizeof(SOCKADDR_BTH):
+                    if (
+                        not socket_address.lp_sockaddr
+                        or socket_address.length < ctypes.sizeof(SOCKADDR_BTH)
+                    ):
                         continue
                     endpoint = ctypes.cast(
                         socket_address.lp_sockaddr, ctypes.POINTER(SOCKADDR_BTH)

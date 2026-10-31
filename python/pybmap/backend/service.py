@@ -7,17 +7,33 @@ import pybmap
 from pybmap import __version__
 from pybmap.discovery import BluetoothDiscoveryError, discover_devices
 from pybmap.errors import (
-    BmapAuthError, BmapConnectionError, BmapError, BmapNotFoundError,
+    BmapAuthError,
+    BmapConnectionError,
+    BmapError,
+    BmapNotFoundError,
     BmapTimeoutError,
 )
 
 from .protocol import METHODS, PROTOCOL_VERSION, ProtocolError
 from .snapshots import (
-    BatteryStatus, Choice, ConnectionState, ConnectionStatus,
-    DeviceCapabilities, DeviceIdentity, DeviceSnapshot, DeviceValues,
-    DiscoveredDevice, EqBandCapability, FirmwareInfo, NoiseControlCapability,
-    NoiseControlKind, Profile, ProfileCapability, RangeCapability,
-    SettingCapability, to_wire,
+    BatteryStatus,
+    Choice,
+    ConnectionState,
+    ConnectionStatus,
+    DeviceCapabilities,
+    DeviceIdentity,
+    DeviceSnapshot,
+    DeviceValues,
+    DiscoveredDevice,
+    EqBandCapability,
+    FirmwareInfo,
+    NoiseControlCapability,
+    NoiseControlKind,
+    Profile,
+    ProfileCapability,
+    RangeCapability,
+    SettingCapability,
+    to_wire,
 )
 
 
@@ -47,14 +63,21 @@ class BackendService(object):
 
     def _empty_snapshot(self, state=ConnectionState.DISCONNECTED, reason=None):
         return DeviceSnapshot(
-            None, None, None, ConnectionStatus(state, reason, None),
-            self._empty_capabilities(), DeviceValues(None, {}, {}, None),
-            self.generation, self.revision,
+            None,
+            None,
+            None,
+            ConnectionStatus(state, reason, None),
+            self._empty_capabilities(),
+            DeviceValues(None, {}, {}, None),
+            self.generation,
+            self.revision,
         )
 
     def _bump(self, snapshot):
         self.revision += 1
-        self._snapshot = snapshot._replace(generation=self.generation, revision=self.revision)
+        self._snapshot = snapshot._replace(
+            generation=self.generation, revision=self.revision
+        )
         self._events.append(("snapshot_changed", to_wire(self._snapshot)))
         return self._snapshot
 
@@ -62,10 +85,17 @@ class BackendService(object):
         self._snapshot = self._empty_snapshot(state, reason)
         self.revision += 1
         self._snapshot = self._snapshot._replace(revision=self.revision)
-        self._events.append(("connection_changed", {
-            "state": state.value, "generation": self.generation,
-            "revision": self.revision, "reason": reason,
-        }))
+        self._events.append(
+            (
+                "connection_changed",
+                {
+                    "state": state.value,
+                    "generation": self.generation,
+                    "revision": self.revision,
+                    "reason": reason,
+                },
+            )
+        )
 
     def drain_events(self):
         events, self._events = self._events, []
@@ -89,8 +119,10 @@ class BackendService(object):
 
     def _handle_hello(self, params):
         return {
-            "backend_version": __version__, "python_version": platform.python_version(),
-            "protocol_version": PROTOCOL_VERSION, "operations": list(METHODS),
+            "backend_version": __version__,
+            "python_version": platform.python_version(),
+            "protocol_version": PROTOCOL_VERSION,
+            "operations": list(METHODS),
         }
 
     def _handle_discover(self, params):
@@ -101,8 +133,14 @@ class BackendService(object):
         for item in found:
             device_id = item.address.upper()
             record = DiscoveredDevice(
-                device_id, item.address, item.name, item.product_id, item.device_type,
-                item.rfcomm_channel, bool(item.paired), bool(item.device_type),
+                device_id,
+                item.address,
+                item.name,
+                item.product_id,
+                item.device_type,
+                item.rfcomm_channel,
+                bool(item.paired),
+                bool(item.device_type),
             )
             self._discovered[device_id] = item
             devices.append(record)
@@ -117,9 +155,15 @@ class BackendService(object):
         if target["kind"] == "discovered":
             discovered = self._discovered.get(target["device_id"])
             if discovered is None:
-                raise ProtocolError("DEVICE_NOT_FOUND", "Discovered device is no longer available", retryable=True)
+                raise ProtocolError(
+                    "DEVICE_NOT_FOUND",
+                    "Discovered device is no longer available",
+                    retryable=True,
+                )
             if not discovered.device_type:
-                raise ProtocolError("UNSUPPORTED_DEVICE", "Choose a model manually for this device")
+                raise ProtocolError(
+                    "UNSUPPORTED_DEVICE", "Choose a model manually for this device"
+                )
             address, device_type = discovered.address, discovered.device_type
             product_id = discovered.product_id
         else:
@@ -207,7 +251,9 @@ class BackendService(object):
         }
         setter = setters.get(key)
         if setter is None:
-            raise ProtocolError("UNSUPPORTED_OPERATION", "Setting is read-only or unsupported")
+            raise ProtocolError(
+                "UNSUPPORTED_OPERATION", "Setting is read-only or unsupported"
+            )
         setter(value)
         return self._refresh_snapshot()
 
@@ -220,10 +266,13 @@ class BackendService(object):
         profile = params["profile"]
         current_profile_id = str(connection.mode_idx())
         saved_slot = connection.save_profile(
-            profile.get("profile_id"), name=profile["name"],
-            cnc_level=profile["cnc_level"], auto_cnc=profile["auto_cnc"],
+            profile.get("profile_id"),
+            name=profile["name"],
+            cnc_level=profile["cnc_level"],
+            auto_cnc=profile["auto_cnc"],
             spatial=SPATIAL_FROM_WIRE[profile["spatial"]],
-            wind_block=profile["wind_block"], anc_toggle=profile["anc_toggle"],
+            wind_block=profile["wind_block"],
+            anc_toggle=profile["anc_toggle"],
         )
         if str(saved_slot) == current_profile_id:
             connection.set_mode(profile["name"])
@@ -241,13 +290,17 @@ class BackendService(object):
 
     def _require_connection(self):
         if self.connection is None:
-            raise ProtocolError("NOT_CONNECTED", "No headset is connected", retryable=True)
+            raise ProtocolError(
+                "NOT_CONNECTED", "No headset is connected", retryable=True
+            )
         return self.connection
 
     def _require_generation(self, generation):
         connection = self._require_connection()
         if generation != self.generation:
-            raise ProtocolError("STALE_GENERATION", "Request belongs to an older connection")
+            raise ProtocolError(
+                "STALE_GENERATION", "Request belongs to an older connection"
+            )
         return connection
 
     def _close_connection(self):
@@ -268,21 +321,32 @@ class BackendService(object):
         connection = self._require_connection()
         try:
             battery = connection.battery()
-            name = self._read("product_name", connection.name, connection.device_info["name"])
+            name = self._read(
+                "product_name", connection.name, connection.device_info["name"]
+            )
             firmware = self._read("firmware", connection.firmware, "")
             capabilities, values = self._capabilities_and_values(connection)
             identity = DeviceIdentity(
-                self._address.upper(), name or connection.device_info["name"],
-                connection.device_info["name"], self._product_id or connection.device_info.get("product_id"),
-                self._device_type, self._address,
+                self._address.upper(),
+                name or connection.device_info["name"],
+                connection.device_info["name"],
+                self._product_id or connection.device_info.get("product_id"),
+                self._device_type,
+                self._address,
             )
             snapshot = DeviceSnapshot(
-                identity, BatteryStatus(max(0, min(100, int(battery))), None),
-                FirmwareInfo(firmware or ""), ConnectionStatus(
-                    ConnectionState.CONNECTED, None,
+                identity,
+                BatteryStatus(max(0, min(100, int(battery))), None),
+                FirmwareInfo(firmware or ""),
+                ConnectionStatus(
+                    ConnectionState.CONNECTED,
+                    None,
                     getattr(connection, "rfcomm_channel", None),
                 ),
-                capabilities, values, self.generation, self.revision,
+                capabilities,
+                values,
+                self.generation,
+                self.revision,
             )
             return self._bump(snapshot)
         except (BmapConnectionError, BmapTimeoutError):
@@ -293,7 +357,11 @@ class BackendService(object):
     def _capabilities_and_values(self, connection):
         settings_caps, settings = [], OrderedDict()
         if connection.has_feature("sidetone"):
-            settings_caps.append(_choice_setting("sidetone", "Sidetone", ("off", "low", "medium", "high")))
+            settings_caps.append(
+                _choice_setting(
+                    "sidetone", "Sidetone", ("off", "low", "medium", "high")
+                )
+            )
             settings["sidetone"] = connection.sidetone()
         for feature, key, label, reader_name in (
             ("auto_pause", "auto_pause", "Auto play/pause", "auto_pause"),
@@ -307,29 +375,42 @@ class BackendService(object):
         profile_id = None
         if connection.has_feature("cnc"):
             current, maximum = connection.cnc()
-            noise = NoiseControlCapability(NoiseControlKind.CNC, RangeCapability(0, maximum, 1), [])
+            noise = NoiseControlCapability(
+                NoiseControlKind.CNC, RangeCapability(0, maximum, 1), []
+            )
             noise_value = {"kind": "cnc", "value": current}
         elif connection.has_feature("anr"):
-            options = [Choice(value, value.title()) for value in ("off", "low", "wind", "high")]
+            options = [
+                Choice(value, value.title()) for value in ("off", "low", "wind", "high")
+            ]
             noise = NoiseControlCapability(NoiseControlKind.ANR, None, options)
             noise_value = {"kind": "anr", "value": connection.anr()}
 
         if connection.has_feature("audio_settings"):
             audio = connection.audio_settings()
-            settings_caps.extend([
-                _choice_setting("spatial_audio", "Spatial audio", ("off", "room", "motion")),
-                _toggle_setting("wind_block", "Wind block"),
-                _toggle_setting("anc_toggle", "Active noise cancellation"),
-            ])
-            settings.update({
-                "spatial_audio": SPATIAL_TO_WIRE.get(audio.spatial, "off"),
-                "wind_block": audio.wind_block, "anc_toggle": audio.anc_toggle,
-            })
+            settings_caps.extend(
+                [
+                    _choice_setting(
+                        "spatial_audio", "Spatial audio", ("off", "room", "motion")
+                    ),
+                    _toggle_setting("wind_block", "Wind block"),
+                    _toggle_setting("anc_toggle", "Active noise cancellation"),
+                ]
+            )
+            settings.update(
+                {
+                    "spatial_audio": SPATIAL_TO_WIRE.get(audio.spatial, "off"),
+                    "wind_block": audio.wind_block,
+                    "anc_toggle": audio.anc_toggle,
+                }
+            )
         eq_caps, eq_values = [], {}
         if connection.has_feature("eq"):
             for band in connection.eq():
                 band_id = band.name.lower()
-                eq_caps.append(EqBandCapability(band_id, band.name, band.min_val, band.max_val, 1))
+                eq_caps.append(
+                    EqBandCapability(band_id, band.name, band.min_val, band.max_val, 1)
+                )
                 eq_values[band_id] = band.current
         profiles = None
         if connection.has_feature("get_all_modes"):
@@ -350,19 +431,30 @@ class BackendService(object):
         for mode in sorted(self.connection.profiles(), key=lambda item: item.mode_idx):
             editable = mode.mode_idx in editable_slots and mode.editable
             if editable and (
-                not mode.configured or not mode.name.strip()
+                not mode.configured
+                or not mode.name.strip()
                 or mode.name.strip().lower() == "none"
             ):
                 continue
             name = preset_names.get(mode.mode_idx, mode.name)
-            profiles.append(Profile(
-                str(mode.mode_idx), name, editable,
-                mode.cnc_level,
-                mode.auto_cnc, SPATIAL_TO_WIRE.get(mode.spatial, "off"),
-                mode.wind_block, mode.anc_toggle,
-            ))
+            profiles.append(
+                Profile(
+                    str(mode.mode_idx),
+                    name,
+                    editable,
+                    mode.cnc_level,
+                    mode.auto_cnc,
+                    SPATIAL_TO_WIRE.get(mode.spatial, "off"),
+                    mode.wind_block,
+                    mode.anc_toggle,
+                )
+            )
         self.revision += 1
-        return {"generation": self.generation, "revision": self.revision, "profiles": profiles}
+        return {
+            "generation": self.generation,
+            "revision": self.revision,
+            "profiles": profiles,
+        }
 
     def _translate_error(self, exc):
         if isinstance(exc, BmapAuthError):
@@ -372,9 +464,15 @@ class BackendService(object):
                 retryable=True,
             )
         if isinstance(exc, BmapTimeoutError):
-            return ProtocolError("DEVICE_TIMEOUT", "The headset did not respond", retryable=True)
+            return ProtocolError(
+                "DEVICE_TIMEOUT", "The headset did not respond", retryable=True
+            )
         if isinstance(exc, BmapNotFoundError):
-            return ProtocolError("DEVICE_NOT_FOUND", "No supported paired headset was found", retryable=True)
+            return ProtocolError(
+                "DEVICE_NOT_FOUND",
+                "No supported paired headset was found",
+                retryable=True,
+            )
         if isinstance(exc, BmapConnectionError):
             code = getattr(exc, "code", "CONNECTION_FAILED")
             messages = {
@@ -389,12 +487,17 @@ class BackendService(object):
             if code not in messages:
                 code = "CONNECTION_FAILED"
             return ProtocolError(
-                code, messages.get(code, "Could not connect to the headset"),
+                code,
+                messages.get(code, "Could not connect to the headset"),
                 retryable=code != "ACCESS_DENIED",
-                details={"rfcomm_channel": exc.channel} if exc.channel is not None else None,
+                details={"rfcomm_channel": exc.channel}
+                if exc.channel is not None
+                else None,
             )
         if isinstance(exc, BluetoothDiscoveryError):
-            return ProtocolError(exc.code, str(exc), retryable=exc.code != "ACCESS_DENIED")
+            return ProtocolError(
+                exc.code, str(exc), retryable=exc.code != "ACCESS_DENIED"
+            )
         if isinstance(exc, ValueError):
             return ProtocolError("INVALID_PARAMS", str(exc))
         if isinstance(exc, BmapError):
@@ -411,4 +514,6 @@ def _toggle_setting(key, label):
 
 
 def _choice_setting(key, label, values):
-    return SettingCapability(key, label, "choice", True, _choices(values), None, None, None)
+    return SettingCapability(
+        key, label, "choice", True, _choices(values), None, None, None
+    )

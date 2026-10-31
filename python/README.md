@@ -21,8 +21,8 @@ import pybmap
 
 with pybmap.connect() as dev:
     print(dev.battery())
-    dev.set_cnc(8)          # QC Ultra 2: CNC level 0-10
-    dev.set_eq(3, 0, -2)    # Bass +3, mid flat, treble -2
+    dev.set_cnc(8)  # QC Ultra 2: CNC level 0-10
+    dev.set_eq(3, 0, -2)  # Bass +3, mid flat, treble -2
 ```
 
 ## Backend sidecar

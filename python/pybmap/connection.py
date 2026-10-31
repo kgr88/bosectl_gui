@@ -12,8 +12,16 @@ Usage:
 """
 
 from .constants import (
-    OP_GET, OP_SETGET, OP_START, OP_STATUS, OP_RESULT, OP_ERROR,
-    OP_PROCESSING, SIDETONE_NAMES, SIDETONE_VALUES, SPATIAL_VALUES,
+    OP_GET,
+    OP_SETGET,
+    OP_START,
+    OP_STATUS,
+    OP_RESULT,
+    OP_ERROR,
+    OP_PROCESSING,
+    SIDETONE_NAMES,
+    SIDETONE_VALUES,
+    SPATIAL_VALUES,
     VOICE_LANGUAGES,
 )
 from .protocol import bmap_packet, parse_response, parse_all_responses, fmt_response
@@ -48,9 +56,8 @@ class BmapConnection:
         features = self._device.FEATURES
         if name not in features:
             raise BmapError(
-                "%s does not support '%s'" % (
-                    self._device.DEVICE_INFO.get("name", "Device"), name
-                )
+                "%s does not support '%s'"
+                % (self._device.DEVICE_INFO.get("name", "Device"), name)
             )
         return features[name]
 
@@ -79,9 +86,7 @@ class BmapConnection:
         """Send a SETGET request and return the parsed response."""
         feat = self._feature(feature_name)
         fblock, func = feat["addr"]
-        resp = self._transport.send_recv(
-            bmap_packet(fblock, func, OP_SETGET, payload)
-        )
+        resp = self._transport.send_recv(bmap_packet(fblock, func, OP_SETGET, payload))
         parsed = parse_response(resp)
         if parsed and parsed.op == OP_ERROR:
             self._raise_error(parsed)
@@ -91,9 +96,7 @@ class BmapConnection:
         """Send a START request and return the parsed response."""
         feat = self._feature(feature_name)
         fblock, func = feat["addr"]
-        resp = self._transport.send_recv(
-            bmap_packet(fblock, func, OP_START, payload)
-        )
+        resp = self._transport.send_recv(bmap_packet(fblock, func, OP_START, payload))
         parsed = parse_response(resp)
         if parsed and parsed.op == OP_ERROR:
             self._raise_error(parsed)
@@ -118,11 +121,14 @@ class BmapConnection:
     def _raise_error(self, parsed):
         """Raise the appropriate exception for an ERROR response."""
         from .constants import ERROR_NAMES
+
         if parsed.payload:
             code = parsed.payload[0]
             name = ERROR_NAMES.get(code, "error %d" % code)
             if code == 5:
-                raise BmapAuthError("Authentication required: %s" % fmt_response(parsed))
+                raise BmapAuthError(
+                    "Authentication required: %s" % fmt_response(parsed)
+                )
             raise BmapDeviceError(
                 "%s: %s" % (name, fmt_response(parsed)),
                 error_code=code,
@@ -237,10 +243,13 @@ class BmapConnection:
         parser = self._feature("mode_config").get("parser")
         modes = {}
         for resp in responses:
-            if (resp.fblock == mode_config_addr[0] and
-                    resp.func == mode_config_addr[1] and
-                    resp.op == OP_STATUS and resp.payload and
-                    len(resp.payload) >= 6):
+            if (
+                resp.fblock == mode_config_addr[0]
+                and resp.func == mode_config_addr[1]
+                and resp.op == OP_STATUS
+                and resp.payload
+                and len(resp.payload) >= 6
+            ):
                 config = parser(resp.payload) if parser else resp.payload
                 if config is not None:
                     modes[config.mode_idx] = config
@@ -250,7 +259,9 @@ class BmapConnection:
         """Full device status snapshot. Returns DeviceStatus namedtuple."""
         # Single GET for mode index, derive name without extra round trip.
         current_idx = self._safe_read(self.mode_idx, None)
-        current_name = self._mode_name_from_idx(current_idx) if current_idx is not None else ""
+        current_name = (
+            self._mode_name_from_idx(current_idx) if current_idx is not None else ""
+        )
         cnc_cur, cnc_max = self._safe_read(self.cnc, (0, 10))
         prompts_on, prompts_lang = self._safe_read(self.prompts, (False, ""))
 
@@ -258,7 +269,8 @@ class BmapConnection:
             battery=self.battery(),
             mode=current_name,
             mode_idx=current_idx,
-            cnc_level=cnc_cur, cnc_max=cnc_max,
+            cnc_level=cnc_cur,
+            cnc_max=cnc_max,
             eq=self._safe_read(self.eq, []),
             name=self._safe_read(self.name, ""),
             firmware=self._safe_read(self.firmware, ""),
@@ -266,7 +278,8 @@ class BmapConnection:
             multipoint=self._safe_read(self.multipoint, False),
             auto_pause=self._safe_read(self.auto_pause, False),
             auto_answer=self._safe_read(self.auto_answer, False),
-            prompts_enabled=prompts_on, prompts_language=prompts_lang,
+            prompts_enabled=prompts_on,
+            prompts_language=prompts_lang,
         )
 
     # ── Write Operations ─────────────────────────────────────────────────────
@@ -334,9 +347,7 @@ class BmapConnection:
             if not -10 <= val <= 10:
                 raise ValueError("EQ value must be -10 to +10")
             payload = builder(val, band_id) if builder else bytes([val & 0xFF, band_id])
-            self._transport.send_recv(
-                bmap_packet(fblock, func, OP_SETGET, payload)
-            )
+            self._transport.send_recv(bmap_packet(fblock, func, OP_SETGET, payload))
 
     def set_spatial(self, mode):
         """Set spatial audio mode ("off", "room", or "head")."""
@@ -355,13 +366,16 @@ class BmapConnection:
         settings = self.audio_settings()
         feat = self._feature("audio_settings")
         builder = feat["builder"]
-        self._setget("audio_settings", builder(
-            cnc_level=overrides.get("cnc_level", settings.cnc_level),
-            auto_cnc=overrides.get("auto_cnc", settings.auto_cnc),
-            spatial=overrides.get("spatial", settings.spatial),
-            wind_block=overrides.get("wind_block", settings.wind_block),
-            anc_toggle=overrides.get("anc_toggle", settings.anc_toggle),
-        ))
+        self._setget(
+            "audio_settings",
+            builder(
+                cnc_level=overrides.get("cnc_level", settings.cnc_level),
+                auto_cnc=overrides.get("auto_cnc", settings.auto_cnc),
+                spatial=overrides.get("spatial", settings.spatial),
+                wind_block=overrides.get("wind_block", settings.wind_block),
+                anc_toggle=overrides.get("anc_toggle", settings.anc_toggle),
+            ),
+        )
 
     def set_name(self, new_name):
         """Set device Bluetooth name (any UTF-8 string)."""
@@ -475,8 +489,7 @@ class BmapConnection:
 
     # ── Profile Management ───────────────────────────────────────────────────
 
-    def create_profile(self, name, cnc_level=0, spatial=0,
-                       wind_block=1, anc_toggle=1):
+    def create_profile(self, name, cnc_level=0, spatial=0, wind_block=1, anc_toggle=1):
         """Create a custom profile in the first available slot.
 
         Returns the slot index used.
@@ -485,8 +498,14 @@ class BmapConnection:
         slot = self._find_free_slot(modes)
         if slot is None:
             raise BmapError("No free profile slot available")
-        self._write_mode(slot, name, cnc_level=cnc_level, spatial=spatial,
-                         wind_block=wind_block, anc_toggle=anc_toggle)
+        self._write_mode(
+            slot,
+            name,
+            cnc_level=cnc_level,
+            spatial=spatial,
+            wind_block=wind_block,
+            anc_toggle=anc_toggle,
+        )
         return slot
 
     def update_profile(self, name, **settings):
@@ -517,15 +536,24 @@ class BmapConnection:
         idx, config = found
         if not config.editable:
             raise BmapError("Cannot delete preset mode '%s'" % name)
-        self._write_mode(idx, "None", cnc_level=0, spatial=0,
-                         wind_block=0, anc_toggle=0)
+        self._write_mode(
+            idx, "None", cnc_level=0, spatial=0, wind_block=0, anc_toggle=0
+        )
 
     def profiles(self):
         """List all mode profiles (presets + custom). Returns list of ModeConfig."""
         return list(self.modes().values())
 
-    def save_profile(self, profile_id=None, name="Custom", cnc_level=0,
-                     auto_cnc=False, spatial=0, wind_block=True, anc_toggle=True):
+    def save_profile(
+        self,
+        profile_id=None,
+        name="Custom",
+        cnc_level=0,
+        auto_cnc=False,
+        spatial=0,
+        wind_block=True,
+        anc_toggle=True,
+    ):
         """Create or update a profile by stable numeric slot identifier."""
         modes = self.modes()
         if profile_id is None:
@@ -544,8 +572,12 @@ class BmapConnection:
             if config is not None and not config.editable:
                 raise BmapError("Profile slot is not editable")
         overrides = {
-            "name": name, "cnc_level": cnc_level, "auto_cnc": auto_cnc,
-            "spatial": spatial, "wind_block": wind_block, "anc_toggle": anc_toggle,
+            "name": name,
+            "cnc_level": cnc_level,
+            "auto_cnc": auto_cnc,
+            "spatial": spatial,
+            "wind_block": wind_block,
+            "anc_toggle": anc_toggle,
         }
         self._write_mode_from_config(slot, config, **overrides)
         return slot
@@ -558,10 +590,21 @@ class BmapConnection:
             raise ValueError("profile_id must be a numeric slot")
         modes = self.modes()
         config = modes.get(slot)
-        if slot not in self._device.EDITABLE_SLOTS or config is None or not config.editable:
+        if (
+            slot not in self._device.EDITABLE_SLOTS
+            or config is None
+            or not config.editable
+        ):
             raise BmapError("Profile slot is not editable")
-        self._write_mode(slot, "None", cnc_level=0, auto_cnc=False, spatial=0,
-                         wind_block=0, anc_toggle=0)
+        self._write_mode(
+            slot,
+            "None",
+            cnc_level=0,
+            auto_cnc=False,
+            spatial=0,
+            wind_block=0,
+            anc_toggle=0,
+        )
 
     # ── Low-Level ────────────────────────────────────────────────────────────
 
@@ -643,18 +686,33 @@ class BmapConnection:
                 return idx
         return None
 
-    def _write_mode(self, slot, name, cnc_level=0, auto_cnc=False, spatial=0,
-                    wind_block=1, anc_toggle=1, prompt_b1=0, prompt_b2=0):
+    def _write_mode(
+        self,
+        slot,
+        name,
+        cnc_level=0,
+        auto_cnc=False,
+        spatial=0,
+        wind_block=1,
+        anc_toggle=1,
+        prompt_b1=0,
+        prompt_b2=0,
+    ):
         """Write a mode config to a slot via ModeConfig SETGET."""
         feat = self._feature("mode_config")
         builder = feat.get("builder")
         if not builder:
             raise BmapError("Device does not support mode configuration")
         payload = builder(
-            mode_idx=slot, name=name, cnc_level=cnc_level,
-            auto_cnc=auto_cnc, spatial=spatial, wind_block=wind_block,
+            mode_idx=slot,
+            name=name,
+            cnc_level=cnc_level,
+            auto_cnc=auto_cnc,
+            spatial=spatial,
+            wind_block=wind_block,
             anc_toggle=anc_toggle,
-            prompt_b1=prompt_b1, prompt_b2=prompt_b2,
+            prompt_b1=prompt_b1,
+            prompt_b2=prompt_b2,
         )
         fblock, func = feat["addr"]
         resp = self._transport.send_recv(

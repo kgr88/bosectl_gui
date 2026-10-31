@@ -19,13 +19,23 @@ from .transport import RfcommTransport
 from .discovery import find_bmap_device, resolve_rfcomm_channels
 from .devices import DEVICES, get_device
 from .catalog import (
-    BOSE_USB_VID, BMAP_UUID, BoseDevice, CATALOG,
-    lookup_device, known_devices, supported_devices, is_supported,
+    BOSE_USB_VID,
+    BMAP_UUID,
+    BoseDevice,
+    CATALOG,
+    lookup_device,
+    known_devices,
+    supported_devices,
+    is_supported,
     usb_ids,
 )
 from .errors import (
-    BmapError, BmapConnectionError, BmapAuthError,
-    BmapDeviceError, BmapTimeoutError, BmapNotFoundError,
+    BmapError,
+    BmapConnectionError,
+    BmapAuthError,
+    BmapDeviceError,
+    BmapTimeoutError,
+    BmapNotFoundError,
 )
 from .types import DeviceStatus, ModeConfig, EqBand, ButtonMapping, BmapResponse
 from .protocol import bmap_packet, parse_response, parse_all_responses
@@ -109,19 +119,23 @@ def _validate_bmap_endpoint(transport, device):
     if feature is None:
         raise BmapConnectionError(
             "Device definition has no safe endpoint validation read",
-            code="UNSUPPORTED_DEVICE", channel=transport.channel,
+            code="UNSUPPORTED_DEVICE",
+            channel=transport.channel,
         )
     fblock, func = feature["addr"]
     response = parse_response(transport.send_recv(bmap_packet(fblock, func, OP_GET)))
     if response is None or response.fblock != fblock or response.func != func:
         raise BmapConnectionError(
             "RFCOMM channel %s did not return a BMAP response" % transport.channel,
-            code="SERVICE_NOT_FOUND", channel=transport.channel,
+            code="SERVICE_NOT_FOUND",
+            channel=transport.channel,
         )
     if response.op == OP_ERROR and response.payload and response.payload[0] == 5:
         raise BmapAuthError("The BMAP service requires device authentication")
     if response.op != OP_STATUS or not response.payload:
         raise BmapConnectionError(
-            "RFCOMM channel %s did not validate as the BMAP service" % transport.channel,
-            code="SERVICE_NOT_FOUND", channel=transport.channel,
+            "RFCOMM channel %s did not validate as the BMAP service"
+            % transport.channel,
+            code="SERVICE_NOT_FOUND",
+            channel=transport.channel,
         )

@@ -1,12 +1,23 @@
 """Tests for device-specific parsers using real captured data."""
 
 from pybmap.devices.parsers import (
-    parse_battery, parse_firmware, parse_product_name, parse_cnc,
-    parse_eq, parse_buttons, parse_multipoint, parse_bool,
-    parse_sidetone, parse_voice_prompts,
+    parse_battery,
+    parse_firmware,
+    parse_product_name,
+    parse_cnc,
+    parse_eq,
+    parse_buttons,
+    parse_multipoint,
+    parse_bool,
+    parse_sidetone,
+    parse_voice_prompts,
     parse_voice_prompts_ultra,
-    parse_mode_config_48, build_mode_config_40,
-    build_eq_band, build_toggle, build_sidetone, build_voice_prompts,
+    parse_mode_config_48,
+    build_mode_config_40,
+    build_eq_band,
+    build_toggle,
+    build_sidetone,
+    build_voice_prompts,
     build_voice_prompts_ultra,
     build_buttons,
 )
@@ -15,6 +26,7 @@ from pybmap.types import ModeConfig, EqBand, ButtonMapping
 
 # ── Test data from real QC Ultra 2 captures ──────────────────────────────────
 # These hex values come from fixtures/packets/qc-ultra-2/ capture files.
+
 
 class TestParseBattery:
     def test_from_capture(self):
@@ -206,14 +218,13 @@ class TestParseVoicePrompts:
         assert lang == 1
 
     def test_ultra_capture_uses_bit_six(self):
-        enabled, lang = parse_voice_prompts_ultra(
-            bytes.fromhex("41000081020000")
-        )
+        enabled, lang = parse_voice_prompts_ultra(bytes.fromhex("41000081020000"))
         assert enabled is True
         assert lang == 1
 
 
 # ── ModeConfig Tests ─────────────────────────────────────────────────────────
+
 
 class TestBuildModeConfig:
     def test_payload_length(self):
@@ -222,25 +233,34 @@ class TestBuildModeConfig:
 
     def test_fields(self):
         payload = build_mode_config_40(
-            mode_idx=5, name="Test", cnc_level=7,
-            spatial=2, wind_block=1, anc_toggle=1,
-            prompt_b1=0, prompt_b2=1,
+            mode_idx=5,
+            name="Test",
+            cnc_level=7,
+            spatial=2,
+            wind_block=1,
+            anc_toggle=1,
+            prompt_b1=0,
+            prompt_b2=1,
         )
-        assert payload[0] == 5      # mode index
-        assert payload[1] == 0      # prompt b1
-        assert payload[2] == 1      # prompt b2
+        assert payload[0] == 5  # mode index
+        assert payload[1] == 0  # prompt b1
+        assert payload[2] == 1  # prompt b2
         assert payload[3:7] == b"Test"  # start of name
-        assert payload[35] == 7     # cnc
-        assert payload[36] == 0     # auto_cnc (False)
-        assert payload[37] == 2     # spatial (head)
-        assert payload[38] == 1     # wind_block
-        assert payload[39] == 1     # anc_toggle
+        assert payload[35] == 7  # cnc
+        assert payload[36] == 0  # auto_cnc (False)
+        assert payload[37] == 2  # spatial (head)
+        assert payload[38] == 1  # wind_block
+        assert payload[39] == 1  # anc_toggle
 
     def test_roundtrip_40(self):
         """Build a 40-byte payload, parse it back."""
         payload = build_mode_config_40(
-            mode_idx=5, name="MyMode", cnc_level=8,
-            spatial=1, wind_block=1, anc_toggle=1,
+            mode_idx=5,
+            name="MyMode",
+            cnc_level=8,
+            spatial=1,
+            wind_block=1,
+            anc_toggle=1,
         )
         config = parse_mode_config_48(payload)
         assert config is not None
@@ -265,6 +285,7 @@ class TestParseModeConfig48:
 
 
 # ── Builder Tests ────────────────────────────────────────────────────────────
+
 
 class TestBuilders:
     def test_eq_band(self):

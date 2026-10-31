@@ -15,8 +15,12 @@ const device: DiscoveredDevice = {
 
 describe("durableConnectionTarget", () => {
   it("converts a discovered device to a target that survives a sidecar restart", () => {
-    expect(durableConnectionTarget({ kind: "discovered", device_id: device.device_id }, [device]))
-      .toEqual({ kind: "manual", address: device.address, device_type: "qc35" });
+    expect(
+      durableConnectionTarget(
+        { kind: "discovered", device_id: device.device_id },
+        [device],
+      ),
+    ).toEqual({ kind: "manual", address: device.address, device_type: "qc35" });
   });
 
   it("leaves an unresolved discovery target unchanged", () => {

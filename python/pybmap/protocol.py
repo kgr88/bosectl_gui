@@ -40,7 +40,7 @@ def parse_response(data):
     func = data[1]
     op = data[2] & 0x0F
     length = data[3]
-    payload = data[4:4 + length]
+    payload = data[4 : 4 + length]
     return BmapResponse(fblock, func, op, payload)
 
 
@@ -63,7 +63,7 @@ def parse_all_responses(data):
         length = data[pos + 3]
         if pos + 4 + length > len(data):
             break  # Truncated packet
-        payload = data[pos + 4:pos + 4 + length]
+        payload = data[pos + 4 : pos + 4 + length]
         responses.append(BmapResponse(fblock, func, op, payload))
         pos += 4 + length
     return responses
@@ -79,7 +79,13 @@ def fmt_response(resp):
     op_name = OP_NAMES.get(resp.op, "op%d" % resp.op)
     if resp.op == OP_ERROR and resp.payload:
         err_name = ERROR_NAMES.get(resp.payload[0], "err%d" % resp.payload[0])
-        return "[%d.%d] %s: %s (%s)" % (resp.fblock, resp.func, op_name, err_name, resp.payload.hex())
+        return "[%d.%d] %s: %s (%s)" % (
+            resp.fblock,
+            resp.func,
+            op_name,
+            err_name,
+            resp.payload.hex(),
+        )
     return "[%d.%d] %s: %s" % (resp.fblock, resp.func, op_name, resp.payload.hex())
 
 

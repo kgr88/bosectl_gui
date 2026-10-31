@@ -74,7 +74,12 @@ pub struct ApiError {
 
 impl ApiError {
     pub fn new(code: ErrorCode, message: impl Into<String>, retryable: bool) -> Self {
-        Self { code, message: message.into(), retryable, details: None }
+        Self {
+            code,
+            message: message.into(),
+            retryable,
+            details: None,
+        }
     }
 
     pub fn invalid(message: impl Into<String>) -> Self {
@@ -87,7 +92,11 @@ impl ApiError {
     }
 
     pub fn backend_unavailable() -> Self {
-        Self::new(ErrorCode::BackendUnavailable, "The device backend is unavailable", true)
+        Self::new(
+            ErrorCode::BackendUnavailable,
+            "The device backend is unavailable",
+            true,
+        )
     }
 
     pub fn backend_crashed(message: impl Into<String>) -> Self {
@@ -95,7 +104,11 @@ impl ApiError {
     }
 
     pub fn timeout() -> Self {
-        Self::new(ErrorCode::BackendTimeout, "The backend request timed out", true)
+        Self::new(
+            ErrorCode::BackendTimeout,
+            "The backend request timed out",
+            true,
+        )
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
@@ -231,24 +244,46 @@ pub struct DeviceSnapshot {
 
 impl DeviceSnapshot {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
-        if self.battery.as_ref().is_some_and(|battery| battery.percent > 100)
-            || self.connection.rfcomm_channel.is_some_and(|channel| !(1..=30).contains(&channel))
+        if self
+            .battery
+            .as_ref()
+            .is_some_and(|battery| battery.percent > 100)
+            || self
+                .connection
+                .rfcomm_channel
+                .is_some_and(|channel| !(1..=30).contains(&channel))
             || self.identity.as_ref().is_some_and(|identity| {
                 !valid_text(&identity.device_id, 256)
                     || !valid_text(&identity.name, 256)
                     || !valid_text(&identity.model, 256)
                     || !matches!(identity.device_type.as_str(), "qc_ultra2" | "qc35")
-                    || identity.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
+                    || identity
+                        .address
+                        .as_ref()
+                        .is_some_and(|address| !valid_bluetooth_address(address))
             })
-            || self.capabilities.equalizer.iter().any(|band| band.minimum > band.maximum || band.step == 0)
+            || self
+                .capabilities
+                .equalizer
+                .iter()
+                .any(|band| band.minimum > band.maximum || band.step == 0)
             || self.capabilities.settings.iter().any(|setting| {
                 setting.step == Some(0)
-                    || setting.minimum.zip(setting.maximum).is_some_and(|(minimum, maximum)| minimum > maximum)
+                    || setting
+                        .minimum
+                        .zip(setting.maximum)
+                        .is_some_and(|(minimum, maximum)| minimum > maximum)
             })
-            || self.values.noise_control.as_ref().is_some_and(|noise| !is_scalar(&noise.value))
+            || self
+                .values
+                .noise_control
+                .as_ref()
+                .is_some_and(|noise| !is_scalar(&noise.value))
             || self.values.settings.values().any(|value| !is_scalar(value))
         {
-            Err(ApiError::backend_crashed("The backend returned an invalid device snapshot"))
+            Err(ApiError::backend_crashed(
+                "The backend returned an invalid device snapshot",
+            ))
         } else {
             Ok(())
         }
@@ -270,16 +305,27 @@ pub struct DiscoveredDevice {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ConnectionTarget {
-    Discovered { device_id: String },
-    Manual { address: String, device_type: String },
+    Discovered {
+        device_id: String,
+    },
+    Manual {
+        address: String,
+        device_type: String,
+    },
 }
 
 impl ConnectionTarget {
     pub fn validate(&self) -> Result<(), ApiError> {
         match self {
             Self::Discovered { device_id } if valid_text(device_id, 256) => Ok(()),
-            Self::Manual { address, device_type }
-                if valid_bluetooth_address(address) && matches!(device_type.as_str(), "qc_ultra2" | "qc35") => Ok(()),
+            Self::Manual {
+                address,
+                device_type,
+            } if valid_bluetooth_address(address)
+                && matches!(device_type.as_str(), "qc_ultra2" | "qc35") =>
+            {
+                Ok(())
+            }
             Self::Discovered { .. } => Err(ApiError::invalid("device_id is invalid")),
             Self::Manual { .. } => Err(ApiError::invalid("manual target is invalid")),
         }
@@ -303,10 +349,19 @@ pub struct SetNoiseControlRequest {
 impl SetNoiseControlRequest {
     pub fn validate(&self) -> Result<(), ApiError> {
         match (&self.kind, &self.value) {
-            (NoiseControlKind::Cnc, NoiseControlInput::Integer(value)) if (0..=10).contains(value) => Ok(()),
+            (NoiseControlKind::Cnc, NoiseControlInput::Integer(value))
+                if (0..=10).contains(value) =>
+            {
+                Ok(())
+            }
             (NoiseControlKind::Anr | NoiseControlKind::Mode, NoiseControlInput::Text(value))
-                if valid_text(value, 64) => Ok(()),
-            _ => Err(ApiError::invalid("noise-control kind and value do not match")),
+                if valid_text(value, 64) =>
+            {
+                Ok(())
+            }
+            _ => Err(ApiError::invalid(
+                "noise-control kind and value do not match",
+            )),
         }
     }
 }
@@ -342,9 +397,15 @@ pub struct SetSettingRequest {
 impl SetSettingRequest {
     pub fn validate(&self) -> Result<(), ApiError> {
         let valid = match self.key {
-            SettingKey::AutoPause | SettingKey::WindBlock | SettingKey::AncToggle => self.value.is_boolean(),
-            SettingKey::Sidetone => matches!(self.value.as_str(), Some("off" | "low" | "medium" | "high")),
-            SettingKey::SpatialAudio => matches!(self.value.as_str(), Some("off" | "room" | "motion")),
+            SettingKey::AutoPause | SettingKey::WindBlock | SettingKey::AncToggle => {
+                self.value.is_boolean()
+            }
+            SettingKey::Sidetone => {
+                matches!(self.value.as_str(), Some("off" | "low" | "medium" | "high"))
+            }
+            SettingKey::SpatialAudio => {
+                matches!(self.value.as_str(), Some("off" | "room" | "motion"))
+            }
         };
         if valid {
             Ok(())
@@ -398,7 +459,10 @@ pub struct ProfileInput {
 
 impl ProfileInput {
     pub fn validate(&self) -> Result<(), ApiError> {
-        if self.profile_id.as_ref().is_some_and(|id| !valid_text(id, 256))
+        if self
+            .profile_id
+            .as_ref()
+            .is_some_and(|id| !valid_text(id, 256))
             || !valid_text(&self.name, 64)
             || self.cnc_level > 10
             || !matches!(self.spatial.as_str(), "off" | "room" | "motion")
@@ -449,11 +513,21 @@ impl DiscoverResult {
         if self.devices.iter().any(|device| {
             !valid_text(&device.device_id, 256)
                 || !valid_text(&device.name, 256)
-                || device.address.as_ref().is_some_and(|address| !valid_bluetooth_address(address))
-                || device.device_type.as_ref().is_some_and(|kind| !matches!(kind.as_str(), "qc_ultra2" | "qc35"))
-                || device.rfcomm_channel.is_some_and(|channel| !(1..=30).contains(&channel))
+                || device
+                    .address
+                    .as_ref()
+                    .is_some_and(|address| !valid_bluetooth_address(address))
+                || device
+                    .device_type
+                    .as_ref()
+                    .is_some_and(|kind| !matches!(kind.as_str(), "qc_ultra2" | "qc35"))
+                || device
+                    .rfcomm_channel
+                    .is_some_and(|channel| !(1..=30).contains(&channel))
         }) {
-            Err(ApiError::backend_crashed("The backend returned invalid discovery data"))
+            Err(ApiError::backend_crashed(
+                "The backend returned invalid discovery data",
+            ))
         } else {
             Ok(())
         }
@@ -470,10 +544,14 @@ pub struct ProfileList {
 impl ProfileList {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
         if self.profiles.iter().any(|profile| {
-            !valid_text(&profile.profile_id, 256) || !valid_text(&profile.name, 64)
-                || profile.cnc_level > 10 || !matches!(profile.spatial.as_str(), "off" | "room" | "motion")
+            !valid_text(&profile.profile_id, 256)
+                || !valid_text(&profile.name, 64)
+                || profile.cnc_level > 10
+                || !matches!(profile.spatial.as_str(), "off" | "room" | "motion")
         }) {
-            Err(ApiError::backend_crashed("The backend returned invalid profile data"))
+            Err(ApiError::backend_crashed(
+                "The backend returned invalid profile data",
+            ))
         } else {
             Ok(())
         }
@@ -492,12 +570,19 @@ impl DeviceEvent {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
         match self {
             Self::SnapshotChanged { data } => data.validate_wire(),
-            Self::ConnectionChanged { data } if data.reason.as_ref().is_some_and(|reason| reason.chars().count() > 256) => {
-                Err(ApiError::backend_crashed("The backend returned an invalid connection event"))
+            Self::ConnectionChanged { data }
+                if data
+                    .reason
+                    .as_ref()
+                    .is_some_and(|reason| reason.chars().count() > 256) =>
+            {
+                Err(ApiError::backend_crashed(
+                    "The backend returned an invalid connection event",
+                ))
             }
-            Self::BackendError { data } if data.message.chars().count() > 1024 => {
-                Err(ApiError::backend_crashed("The backend returned an invalid error event"))
-            }
+            Self::BackendError { data } if data.message.chars().count() > 1024 => Err(
+                ApiError::backend_crashed("The backend returned an invalid error event"),
+            ),
             _ => Ok(()),
         }
     }
@@ -517,9 +602,10 @@ fn valid_text(value: &str, maximum: usize) -> bool {
 
 fn valid_bluetooth_address(value: &str) -> bool {
     let parts: Vec<_> = value.split(':').collect();
-    parts.len() == 6 && parts.iter().all(|part| {
-        part.len() == 2 && part.chars().all(|character| character.is_ascii_hexdigit())
-    })
+    parts.len() == 6
+        && parts.iter().all(|part| {
+            part.len() == 2 && part.chars().all(|character| character.is_ascii_hexdigit())
+        })
 }
 
 fn is_scalar(value: &Value) -> bool {
@@ -532,7 +618,10 @@ mod tests {
 
     #[test]
     fn error_codes_are_stable_screaming_snake_case() {
-        assert_eq!(serde_json::to_string(&ErrorCode::DeviceTimeout).unwrap(), "\"DEVICE_TIMEOUT\"");
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::DeviceTimeout).unwrap(),
+            "\"DEVICE_TIMEOUT\""
+        );
     }
 
     #[test]
@@ -541,7 +630,10 @@ mod tests {
             address: "AA:BB:CC:DD:EE:FF".into(),
             device_type: "unknown".into(),
         };
-        assert_eq!(target.validate().unwrap_err().code, ErrorCode::InvalidParams);
+        assert_eq!(
+            target.validate().unwrap_err().code,
+            ErrorCode::InvalidParams
+        );
     }
 
     #[test]
@@ -560,7 +652,9 @@ mod tests {
             generation: 1,
             fields: vec![PollField::Battery, PollField::Battery],
         };
-        assert_eq!(request.validate().unwrap_err().code, ErrorCode::InvalidParams);
+        assert_eq!(
+            request.validate().unwrap_err().code,
+            ErrorCode::InvalidParams
+        );
     }
-
 }

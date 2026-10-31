@@ -85,7 +85,11 @@ impl BackendClient {
     {
         let params = serde_json::to_value(params)
             .map_err(|_| ApiError::invalid("request could not be serialized"))?;
-        let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed).to_string();
+        let id = self
+            .inner
+            .next_id
+            .fetch_add(1, Ordering::Relaxed)
+            .to_string();
         let wire = serde_json::to_vec(&json!({
             "v": PROTOCOL_VERSION, "id": id, "method": method, "params": params
         }))
@@ -102,14 +106,28 @@ impl BackendClient {
             .insert(id.clone(), sender);
 
         let write_result = (|| -> Result<(), ApiError> {
-            let process = self.inner.process.lock().map_err(|_| ApiError::backend_unavailable())?;
+            let process = self
+                .inner
+                .process
+                .lock()
+                .map_err(|_| ApiError::backend_unavailable())?;
             let process = process.as_ref().ok_or_else(ApiError::backend_unavailable)?;
-            let mut stdin = process.stdin.lock().map_err(|_| ApiError::backend_unavailable())?;
-            stdin.write_all(&wire).and_then(|_| stdin.write_all(b"\n")).and_then(|_| stdin.flush())
+            let mut stdin = process
+                .stdin
+                .lock()
+                .map_err(|_| ApiError::backend_unavailable())?;
+            stdin
+                .write_all(&wire)
+                .and_then(|_| stdin.write_all(b"\n"))
+                .and_then(|_| stdin.flush())
                 .map_err(|_| ApiError::backend_crashed("The backend input stream closed"))
         })();
         if write_result.is_err() {
-            self.inner.pending.lock().ok().and_then(|mut pending| pending.remove(&id));
+            self.inner
+                .pending
+                .lock()
+                .ok()
+                .and_then(|mut pending| pending.remove(&id));
             return Err(ApiError::backend_crashed("The backend input stream closed"));
         }
 
@@ -122,7 +140,11 @@ impl BackendClient {
         let value = match receiver.recv_timeout(timeout) {
             Ok(result) => result?,
             Err(mpsc::RecvTimeoutError::Timeout) => {
-                self.inner.pending.lock().ok().and_then(|mut pending| pending.remove(&id));
+                self.inner
+                    .pending
+                    .lock()
+                    .ok()
+                    .and_then(|mut pending| pending.remove(&id));
                 return Err(ApiError::timeout());
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => {
@@ -134,9 +156,17 @@ impl BackendClient {
     }
 
     fn ensure_started(&self) -> Result<(), ApiError> {
-        let _startup = self.inner.startup.lock().map_err(|_| ApiError::backend_unavailable())?;
+        let _startup = self
+            .inner
+            .startup
+            .lock()
+            .map_err(|_| ApiError::backend_unavailable())?;
         {
-            let process = self.inner.process.lock().map_err(|_| ApiError::backend_unavailable())?;
+            let process = self
+                .inner
+                .process
+                .lock()
+                .map_err(|_| ApiError::backend_unavailable())?;
             if process.is_some() && self.inner.healthy.load(Ordering::Acquire) {
                 return Ok(());
             }
@@ -147,8 +177,15 @@ impl BackendClient {
         let stdin = Arc::new(Mutex::new(stdin));
         self.inner.healthy.store(true, Ordering::Release);
         {
-            let mut process = self.inner.process.lock().map_err(|_| ApiError::backend_unavailable())?;
-            *process = Some(BackendProcess { child, stdin: stdin.clone() });
+            let mut process = self
+                .inner
+                .process
+                .lock()
+                .map_err(|_| ApiError::backend_unavailable())?;
+            *process = Some(BackendProcess {
+                child,
+                stdin: stdin.clone(),
+            });
         }
         let inner = self.inner.clone();
         thread::Builder::new()
@@ -188,7 +225,9 @@ impl BackendClient {
             || !hello.operations.iter().any(|method| method == "shutdown")
         {
             self.stop_process();
-            return Err(ApiError::backend_crashed("The backend handshake is incomplete"));
+            return Err(ApiError::backend_crashed(
+                "The backend handshake is incomplete",
+            ));
         }
         Ok(())
     }
@@ -208,7 +247,12 @@ impl BackendClient {
     fn stop_process(&self) {
         self.inner.stopping.store(true, Ordering::Release);
         self.inner.healthy.store(false, Ordering::Release);
-        let process = self.inner.process.lock().ok().and_then(|mut process| process.take());
+        let process = self
+            .inner
+            .process
+            .lock()
+            .ok()
+            .and_then(|mut process| process.take());
         if let Some(mut process) = process {
             drop(process.stdin);
             if process.child.try_wait().ok().flatten().is_none() {
@@ -216,7 +260,10 @@ impl BackendClient {
             }
             let _ = process.child.wait();
         }
-        fail_pending(&self.inner, ApiError::backend_crashed("The backend stopped"));
+        fail_pending(
+            &self.inner,
+            ApiError::backend_crashed("The backend stopped"),
+        );
     }
 }
 
@@ -227,7 +274,10 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
             Ok(None) => break,
             Ok(Some(line)) => line,
             Err(error) if error.kind() == io::ErrorKind::InvalidData => {
-                fail_all(&inner, ApiError::backend_crashed("The backend emitted an oversized message"));
+                fail_all(
+                    &inner,
+                    ApiError::backend_crashed("The backend emitted an oversized message"),
+                );
                 break;
             }
             Err(_) => break,
@@ -235,24 +285,42 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
         let message: Value = match serde_json::from_slice(&line) {
             Ok(message) => message,
             Err(_) => {
-                fail_all(&inner, ApiError::backend_crashed("The backend emitted malformed JSON"));
+                fail_all(
+                    &inner,
+                    ApiError::backend_crashed("The backend emitted malformed JSON"),
+                );
                 break;
             }
         };
         if message.get("v").and_then(Value::as_u64) != Some(PROTOCOL_VERSION.into()) {
-            fail_all(&inner, ApiError::backend_crashed("The backend emitted an unsupported message"));
+            fail_all(
+                &inner,
+                ApiError::backend_crashed("The backend emitted an unsupported message"),
+            );
             break;
         }
         if let Some(id) = message.get("id").and_then(Value::as_str) {
-            let sender = inner.pending.lock().ok().and_then(|mut pending| pending.remove(id));
+            let sender = inner
+                .pending
+                .lock()
+                .ok()
+                .and_then(|mut pending| pending.remove(id));
             if let Some(sender) = sender {
                 let response = if let Some(result) = message.get("result") {
                     Ok(result.clone())
                 } else if let Some(error) = message.get("error") {
-                    serde_json::from_value::<ApiError>(error.clone())
-                        .map_or_else(|_| Err(ApiError::backend_crashed("The backend returned an invalid error")), Err)
+                    serde_json::from_value::<ApiError>(error.clone()).map_or_else(
+                        |_| {
+                            Err(ApiError::backend_crashed(
+                                "The backend returned an invalid error",
+                            ))
+                        },
+                        Err,
+                    )
                 } else {
-                    Err(ApiError::backend_crashed("The backend returned an invalid response"))
+                    Err(ApiError::backend_crashed(
+                        "The backend returned an invalid response",
+                    ))
                 };
                 let _ = sender.send(response);
             }
@@ -268,7 +336,10 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
                     }
                 }
                 _ => {
-                    fail_all(&inner, ApiError::backend_crashed("The backend emitted an invalid event"));
+                    fail_all(
+                        &inner,
+                        ApiError::backend_crashed("The backend emitted an invalid event"),
+                    );
                     break;
                 }
             }
@@ -276,7 +347,10 @@ fn read_backend(inner: Arc<ClientInner>, stdout: impl std::io::Read) {
     }
     inner.healthy.store(false, Ordering::Release);
     if !inner.stopping.load(Ordering::Acquire) {
-        fail_all(&inner, ApiError::backend_crashed("The backend exited unexpectedly"));
+        fail_all(
+            &inner,
+            ApiError::backend_crashed("The backend exited unexpectedly"),
+        );
     }
 }
 
@@ -291,7 +365,10 @@ fn update_tray_status(app: &AppHandle, event: &DeviceEvent) {
         DeviceEvent::SnapshotChanged { data }
             if data.connection.state == ConnectionState::Connected =>
         {
-            let name = data.identity.as_ref().map_or("Headset", |identity| identity.name.as_str());
+            let name = data
+                .identity
+                .as_ref()
+                .map_or("Headset", |identity| identity.name.as_str());
             let battery = data
                 .battery
                 .as_ref()
@@ -321,9 +398,7 @@ fn update_tray_status(app: &AppHandle, event: &DeviceEvent) {
             ConnectionState::Error => {
                 ("bosectl · Connection error".into(), TrayIconUpdate::Default)
             }
-            ConnectionState::Connected => {
-                ("bosectl · Connected".into(), TrayIconUpdate::Keep)
-            }
+            ConnectionState::Connected => ("bosectl · Connected".into(), TrayIconUpdate::Keep),
         },
         DeviceEvent::BackendError { .. } => {
             ("bosectl · Backend error".into(), TrayIconUpdate::Default)
@@ -358,7 +433,10 @@ fn read_capped_line<R: BufRead>(reader: &mut R) -> io::Result<Option<Vec<u8>>> {
             if newline.is_none() {
                 discard_line(reader)?;
             }
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "oversized backend line"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "oversized backend line",
+            ));
         }
         line.extend_from_slice(&available[..take]);
         reader.consume(take);
@@ -389,11 +467,7 @@ fn fail_all(inner: &ClientInner, error: ApiError) {
         let event = DeviceEvent::BackendError { data: error };
         app.state::<AppState>().record_backend_event(&event);
         update_tray_status(&app, &event);
-        let _ = app.emit_to(
-            "main",
-            "bose://device-event",
-            event,
-        );
+        let _ = app.emit_to("main", "bose://device-event", event);
     }
 }
 
@@ -442,7 +516,10 @@ fn drain_backend_log(stderr: ChildStderr, log_path: Option<PathBuf>) {
 fn open_backend_log(path: PathBuf) -> Option<std::fs::File> {
     let directory = path.parent()?;
     fs::create_dir_all(directory).ok()?;
-    if path.metadata().is_ok_and(|metadata| metadata.len() >= MAX_LOG_BYTES) {
+    if path
+        .metadata()
+        .is_ok_and(|metadata| metadata.len() >= MAX_LOG_BYTES)
+    {
         let previous = directory.join("backend.previous.log");
         let _ = fs::remove_file(&previous);
         let _ = fs::rename(&path, previous);
@@ -484,22 +561,29 @@ fn is_bluetooth_address_at(value: &[u8], start: usize) -> bool {
 }
 
 #[cfg(debug_assertions)]
-fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError> {
+fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError>
+{
     let python_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../python");
     let mut command = if let Some(executable) = std::env::var_os("PYBMAP_PYTHON") {
         Command::new(executable)
     } else {
         Command::new("python")
     };
-    command.args(["-m", "pybmap.backend"]).current_dir(python_dir);
+    command
+        .args(["-m", "pybmap.backend"])
+        .current_dir(python_dir);
     spawn_command(command)
 }
 
 #[cfg(not(debug_assertions))]
-fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError> {
+fn spawn_backend() -> Result<(Child, ChildStdin, std::process::ChildStdout, ChildStderr), ApiError>
+{
     let executable = std::env::current_exe()
         .ok()
-        .and_then(|path| path.parent().map(|parent| parent.join("bosectl-backend.exe")))
+        .and_then(|path| {
+            path.parent()
+                .map(|parent| parent.join("bosectl-backend.exe"))
+        })
         .ok_or_else(ApiError::backend_unavailable)?;
     spawn_command(Command::new(executable))
 }
@@ -519,9 +603,18 @@ fn spawn_command(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|_| ApiError::backend_unavailable())?;
-    let stdin = child.stdin.take().ok_or_else(ApiError::backend_unavailable)?;
-    let stdout = child.stdout.take().ok_or_else(ApiError::backend_unavailable)?;
-    let stderr = child.stderr.take().ok_or_else(ApiError::backend_unavailable)?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(ApiError::backend_unavailable)?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(ApiError::backend_unavailable)?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(ApiError::backend_unavailable)?;
     Ok((child, stdin, stdout, stderr))
 }
 
@@ -533,18 +626,37 @@ mod tests {
     fn malformed_output_fails_pending_requests() {
         let client = BackendClient::default();
         let (sender, receiver) = mpsc::channel();
-        client.inner.pending.lock().unwrap().insert("1".into(), sender);
+        client
+            .inner
+            .pending
+            .lock()
+            .unwrap()
+            .insert("1".into(), sender);
         read_backend(client.inner.clone(), b"not-json\n".as_slice());
-        assert_eq!(receiver.recv().unwrap().unwrap_err().code, ErrorCode::BackendCrashed);
+        assert_eq!(
+            receiver.recv().unwrap().unwrap_err().code,
+            ErrorCode::BackendCrashed
+        );
     }
 
     #[test]
     fn oversized_output_fails_pending_requests() {
         let client = BackendClient::default();
         let (sender, receiver) = mpsc::channel();
-        client.inner.pending.lock().unwrap().insert("1".into(), sender);
-        read_backend(client.inner.clone(), vec![b'x'; MAX_LINE_BYTES + 1].as_slice());
-        assert_eq!(receiver.recv().unwrap().unwrap_err().code, ErrorCode::BackendCrashed);
+        client
+            .inner
+            .pending
+            .lock()
+            .unwrap()
+            .insert("1".into(), sender);
+        read_backend(
+            client.inner.clone(),
+            vec![b'x'; MAX_LINE_BYTES + 1].as_slice(),
+        );
+        assert_eq!(
+            receiver.recv().unwrap().unwrap_err().code,
+            ErrorCode::BackendCrashed
+        );
     }
 
     #[test]
@@ -569,9 +681,17 @@ mod tests {
     fn unexpected_eof_is_reported_as_a_backend_crash() {
         let client = BackendClient::default();
         let (sender, receiver) = mpsc::channel();
-        client.inner.pending.lock().unwrap().insert("1".into(), sender);
+        client
+            .inner
+            .pending
+            .lock()
+            .unwrap()
+            .insert("1".into(), sender);
         read_backend(client.inner.clone(), b"".as_slice());
-        assert_eq!(receiver.recv().unwrap().unwrap_err().code, ErrorCode::BackendCrashed);
+        assert_eq!(
+            receiver.recv().unwrap().unwrap_err().code,
+            ErrorCode::BackendCrashed
+        );
     }
 
     #[test]

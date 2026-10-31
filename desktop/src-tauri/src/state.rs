@@ -39,8 +39,14 @@ mod tests {
     fn rejects_old_generations_and_revisions() {
         let state = AppState::new(SingleInstanceGuard::for_test());
         state.accept_snapshot(snapshot(2, 4)).unwrap();
-        assert_eq!(state.accept_snapshot(snapshot(1, 99)).unwrap_err().code, ErrorCode::StaleGeneration);
-        assert_eq!(state.accept_snapshot(snapshot(2, 3)).unwrap_err().code, ErrorCode::StaleGeneration);
+        assert_eq!(
+            state.accept_snapshot(snapshot(1, 99)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
+        assert_eq!(
+            state.accept_snapshot(snapshot(2, 3)).unwrap_err().code,
+            ErrorCode::StaleGeneration
+        );
         assert!(state.accept_snapshot(snapshot(3, 0)).is_ok());
     }
 
@@ -121,9 +127,13 @@ impl AppState {
         // A stopped sidecar starts its generation and revision counters over.
         // A successful connect establishes a new ordering epoch, so its first
         // snapshot must not be compared with the previous sidecar's counters.
-        self.generation.store(snapshot.generation, Ordering::Release);
+        self.generation
+            .store(snapshot.generation, Ordering::Release);
         self.revision.store(snapshot.revision, Ordering::Release);
-        *self.snapshot.lock().map_err(|_| ApiError::internal("device state is unavailable"))? =
+        *self
+            .snapshot
+            .lock()
+            .map_err(|_| ApiError::internal("device state is unavailable"))? =
             Some(snapshot.clone());
         Ok(snapshot)
     }
@@ -154,9 +164,13 @@ impl AppState {
                 false,
             ));
         }
-        self.generation.store(snapshot.generation, Ordering::Release);
+        self.generation
+            .store(snapshot.generation, Ordering::Release);
         self.revision.store(snapshot.revision, Ordering::Release);
-        *self.snapshot.lock().map_err(|_| ApiError::internal("device state is unavailable"))? =
+        *self
+            .snapshot
+            .lock()
+            .map_err(|_| ApiError::internal("device state is unavailable"))? =
             Some(snapshot.clone());
         Ok(snapshot)
     }

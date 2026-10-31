@@ -15,11 +15,18 @@ from pybmap.backend.worker import run
 
 def request(method, params=None, request_id="42"):
     return json.dumps(
-        {"v": PROTOCOL_VERSION, "id": request_id, "method": method, "params": params or {}}
+        {
+            "v": PROTOCOL_VERSION,
+            "id": request_id,
+            "method": method,
+            "params": params or {},
+        }
     )
 
 
-@pytest.mark.parametrize("method", ("hello", "discover", "disconnect", "get_snapshot", "shutdown"))
+@pytest.mark.parametrize(
+    "method", ("hello", "discover", "disconnect", "get_snapshot", "shutdown")
+)
 def test_parameterless_operations_parse(method):
     parsed = parse_request_line(request(method))
     assert parsed.method == method
@@ -29,7 +36,16 @@ def test_parameterless_operations_parse(method):
 @pytest.mark.parametrize(
     "method,params",
     [
-        ("connect", {"target": {"kind": "manual", "address": "AA:BB:CC:DD:EE:FF", "device_type": "qc35"}}),
+        (
+            "connect",
+            {
+                "target": {
+                    "kind": "manual",
+                    "address": "AA:BB:CC:DD:EE:FF",
+                    "device_type": "qc35",
+                }
+            },
+        ),
         ("set_noise_control", {"generation": 3, "kind": "cnc", "value": 7}),
         ("set_eq", {"generation": 3, "bass": -2, "mid": 0, "treble": 4}),
         ("set_setting", {"generation": 3, "key": "sidetone", "value": "medium"}),
@@ -46,10 +62,19 @@ def test_operation_contracts_parse(method, params):
     "payload,code",
     [
         ("not json", "INVALID_REQUEST"),
-        ('{"v":2,"id":"1","method":"set_setting","params":{"generation":1,"key":"sidetone","value":NaN}}', "INVALID_REQUEST"),
-        (json.dumps({"v": 1, "id": "1", "method": "hello", "params": {}}), "UNSUPPORTED_PROTOCOL"),
+        (
+            '{"v":2,"id":"1","method":"set_setting","params":{"generation":1,"key":"sidetone","value":NaN}}',
+            "INVALID_REQUEST",
+        ),
+        (
+            json.dumps({"v": 1, "id": "1", "method": "hello", "params": {}}),
+            "UNSUPPORTED_PROTOCOL",
+        ),
         (request("missing"), "UNKNOWN_METHOD"),
-        (request("set_eq", {"generation": 1, "bass": 11, "mid": 0, "treble": 0}), "INVALID_PARAMS"),
+        (
+            request("set_eq", {"generation": 1, "bass": 11, "mid": 0, "treble": 0}),
+            "INVALID_PARAMS",
+        ),
         (request("hello", {"unexpected": True}), "INVALID_PARAMS"),
     ],
 )
@@ -62,12 +87,16 @@ def test_invalid_requests_have_stable_codes(payload, code):
 @pytest.mark.parametrize("fields", ([], ["battery", "battery"], ["firmware"]))
 def test_poll_rejects_empty_duplicate_and_broad_fields(fields):
     with pytest.raises(ProtocolError) as caught:
-        parse_request_line(request("poll_snapshot", {"generation": 1, "fields": fields}))
+        parse_request_line(
+            request("poll_snapshot", {"generation": 1, "fields": fields})
+        )
     assert caught.value.code == "INVALID_PARAMS"
 
 
 def test_worker_handshake_and_shutdown_use_stdout_only_for_protocol():
-    stdin = io.StringIO(request("hello") + "\n" + request("shutdown", request_id="43") + "\n")
+    stdin = io.StringIO(
+        request("hello") + "\n" + request("shutdown", request_id="43") + "\n"
+    )
     stdout = io.StringIO()
     stderr = io.StringIO()
 
@@ -97,9 +126,20 @@ def test_worker_coalesces_rapid_equalizer_writes_and_answers_every_request():
         def drain_events(self):
             return []
 
-    lines = "".join(request("set_eq", {
-        "generation": 1, "bass": value, "mid": 0, "treble": 0,
-    }, request_id=str(value)) + "\n" for value in (1, 2, 3))
+    lines = "".join(
+        request(
+            "set_eq",
+            {
+                "generation": 1,
+                "bass": value,
+                "mid": 0,
+                "treble": 0,
+            },
+            request_id=str(value),
+        )
+        + "\n"
+        for value in (1, 2, 3)
+    )
     service = Service()
     stdout = io.StringIO()
     run(stdin=io.StringIO(lines), stdout=stdout, stderr=io.StringIO(), service=service)

@@ -3,8 +3,5 @@
   "identifier": "main-window",
   "description": "Only event subscription is exposed in addition to bosectl domain commands.",
   "windows": ["main"],
-  "permissions": [
-    "core:event:allow-listen",
-    "core:event:allow-unlisten"
-  ]
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

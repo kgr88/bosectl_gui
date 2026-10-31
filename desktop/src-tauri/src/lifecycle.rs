@@ -29,12 +29,18 @@ impl Drop for SingleInstanceGuard {
 
 #[cfg(all(test, windows))]
 impl SingleInstanceGuard {
-    pub(crate) fn for_test() -> Self { Self { handle: std::ptr::null_mut() } }
+    pub(crate) fn for_test() -> Self {
+        Self {
+            handle: std::ptr::null_mut(),
+        }
+    }
 }
 
 #[cfg(all(test, not(windows)))]
 impl SingleInstanceGuard {
-    pub(crate) fn for_test() -> Self { Self {} }
+    pub(crate) fn for_test() -> Self {
+        Self {}
+    }
 }
 
 #[cfg(windows)]
@@ -48,7 +54,9 @@ extern "system" {
 #[cfg(windows)]
 fn acquire_single_instance() -> Result<SingleInstanceGuard, ()> {
     const ERROR_ALREADY_EXISTS: u32 = 183;
-    let name: Vec<u16> = "Local\\bosectl-gui-single-instance\0".encode_utf16().collect();
+    let name: Vec<u16> = "Local\\bosectl-gui-single-instance\0"
+        .encode_utf16()
+        .collect();
     let handle = unsafe { CreateMutexW(std::ptr::null_mut(), 0, name.as_ptr()) };
     if handle.is_null() || unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
         if !handle.is_null() {
@@ -210,7 +218,9 @@ pub fn run() {
             commands::delete_profile,
         ])
         .setup(|app| {
-            app.state::<AppState>().backend.attach_app(app.handle().clone());
+            app.state::<AppState>()
+                .backend
+                .attach_app(app.handle().clone());
             let open = MenuItem::with_id(app, "open", "Open controls", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
@@ -222,13 +232,21 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => open_controls(app),
                     "quit" => {
-                        app.state::<AppState>().quitting.store(true, Ordering::Release);
+                        app.state::<AppState>()
+                            .quitting
+                            .store(true, Ordering::Release);
                         app.exit(0);
                     }
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if matches!(event, TrayIconEvent::DoubleClick { button: MouseButton::Left, .. }) {
+                    if matches!(
+                        event,
+                        TrayIconEvent::DoubleClick {
+                            button: MouseButton::Left,
+                            ..
+                        }
+                    ) {
                         open_controls(tray.app_handle());
                     }
                 })
@@ -239,9 +257,11 @@ pub fn run() {
         .expect("error while building bosectl");
 
     app.run(|app, event| match event {
-        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. }
-            if label == "main" && !app.state::<AppState>().quitting.load(Ordering::Acquire) =>
-        {
+        RunEvent::WindowEvent {
+            label,
+            event: WindowEvent::CloseRequested { api, .. },
+            ..
+        } if label == "main" && !app.state::<AppState>().quitting.load(Ordering::Acquire) => {
             api.prevent_close();
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.destroy();

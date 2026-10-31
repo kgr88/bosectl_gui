@@ -67,12 +67,15 @@ def test_truncated_frame_reports_device_loss():
         transport.send_recv(b"request")
 
 
-@pytest.mark.parametrize("winerror,code", [
-    (10050, "BLUETOOTH_DISABLED"),
-    (10061, "SERVICE_NOT_FOUND"),
-    (10065, "DEVICE_NOT_FOUND"),
-    (10054, "DEVICE_LOST"),
-])
+@pytest.mark.parametrize(
+    "winerror,code",
+    [
+        (10050, "BLUETOOTH_DISABLED"),
+        (10061, "SERVICE_NOT_FOUND"),
+        (10065, "DEVICE_NOT_FOUND"),
+        (10054, "DEVICE_LOST"),
+    ],
+)
 def test_windows_socket_categories_remain_actionable(winerror, code):
     error = OSError()
     error.winerror = winerror

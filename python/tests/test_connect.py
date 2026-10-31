@@ -47,13 +47,20 @@ def test_sdp_channel_is_tried_before_unique_catalog_fallbacks():
             self.channel = channel
             attempts.append(channel)
 
-        def connect(self): pass
-        def close(self): pass
-        def send_recv(self, packet): return VALID_BATTERY_RESPONSE
+        def connect(self):
+            pass
+
+        def close(self):
+            pass
+
+        def send_recv(self, packet):
+            return VALID_BATTERY_RESPONSE
 
     connection = pybmap.connect(
-        mac="68:F2:1F:00:00:01", device_type="qc_ultra2",
-        transport_factory=FakeTransport, channel_resolver=lambda _mac: [7, 2],
+        mac="68:F2:1F:00:00:01",
+        device_type="qc_ultra2",
+        transport_factory=FakeTransport,
+        channel_resolver=lambda _mac: [7, 2],
     )
 
     assert attempts == [7]
@@ -69,16 +76,22 @@ def test_connected_non_bmap_endpoint_is_rejected_before_fallback():
             self.closed = False
             attempts.append(self)
 
-        def connect(self): pass
-        def close(self): self.closed = True
+        def connect(self):
+            pass
+
+        def close(self):
+            self.closed = True
+
         def send_recv(self, packet):
             if self.channel == 7:
                 return b"\x05\x01\x03\x01\x00"
             return VALID_BATTERY_RESPONSE
 
     connection = pybmap.connect(
-        mac="68:F2:1F:00:00:01", device_type="qc_ultra2",
-        transport_factory=FakeTransport, channel_resolver=lambda _mac: [7],
+        mac="68:F2:1F:00:00:01",
+        device_type="qc_ultra2",
+        transport_factory=FakeTransport,
+        channel_resolver=lambda _mac: [7],
     )
 
     assert [attempt.channel for attempt in attempts] == [7, 2]

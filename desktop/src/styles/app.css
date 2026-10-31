@@ -63,14 +63,36 @@
 }
 
 @layer base {
-  html { @apply min-w-80 bg-app font-sans text-ink; font-synthesis: none; }
-  body { @apply m-0 min-h-screen bg-inherit; }
-  button, input, select { font: inherit; }
-  button:focus-visible, input:focus-visible, select:focus-visible { @apply outline-3 outline-offset-2 outline-focus; }
-  input[type="range"] { @apply w-full accent-accent; }
-  input[type="checkbox"] { @apply size-[19px] accent-accent; }
+  html {
+    @apply min-w-80 bg-app font-sans text-ink;
+    font-synthesis: none;
+  }
+  body {
+    @apply m-0 min-h-screen bg-inherit;
+  }
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    @apply outline-3 outline-offset-2 outline-focus;
+  }
+  input[type="range"] {
+    @apply w-full accent-accent;
+  }
+  input[type="checkbox"] {
+    @apply size-[19px] accent-accent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
 }

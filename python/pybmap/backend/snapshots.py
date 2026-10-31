@@ -26,9 +26,7 @@ DeviceIdentity = namedtuple(
 )
 BatteryStatus = namedtuple("BatteryStatus", ["percent", "charging"])
 FirmwareInfo = namedtuple("FirmwareInfo", ["version"])
-ConnectionStatus = namedtuple(
-    "ConnectionStatus", ["state", "reason", "rfcomm_channel"]
-)
+ConnectionStatus = namedtuple("ConnectionStatus", ["state", "reason", "rfcomm_channel"])
 Choice = namedtuple("Choice", ["value", "label"])
 RangeCapability = namedtuple("RangeCapability", ["minimum", "maximum", "step"])
 NoiseControlCapability = namedtuple(
@@ -41,9 +39,7 @@ SettingCapability = namedtuple(
     "SettingCapability",
     ["key", "label", "kind", "writable", "options", "minimum", "maximum", "step"],
 )
-ProfileCapability = namedtuple(
-    "ProfileCapability", ["maximum", "supports_delete"]
-)
+ProfileCapability = namedtuple("ProfileCapability", ["maximum", "supports_delete"])
 DeviceCapabilities = namedtuple(
     "DeviceCapabilities",
     ["noise_control", "equalizer", "settings", "profiles"],

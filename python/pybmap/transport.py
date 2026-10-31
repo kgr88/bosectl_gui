@@ -19,9 +19,16 @@ class RfcommTransport:
             resp = transport.send_recv(packet_bytes)
     """
 
-    def __init__(self, mac, channel=RFCOMM_CHANNEL, timeout=3.0,
-                 connect_timeout=None, response_timeout=None,
-                 drain_timeout=0.5, socket_factory=None):
+    def __init__(
+        self,
+        mac,
+        channel=RFCOMM_CHANNEL,
+        timeout=3.0,
+        connect_timeout=None,
+        response_timeout=None,
+        drain_timeout=0.5,
+        socket_factory=None,
+    ):
         self.mac = mac
         self.channel = channel
         self.connect_timeout = timeout if connect_timeout is None else connect_timeout
@@ -138,40 +145,56 @@ def _translate_socket_error(error, action, channel=None):
     timed_out = {errno.ETIMEDOUT, 10060}
     denied = {errno.EACCES, errno.EPERM, 10013}
     unavailable = {errno.EAFNOSUPPORT, errno.EPROTONOSUPPORT, 10047, 10043}
-    disabled = {getattr(errno, "ENETDOWN", -1), getattr(errno, "ENETUNREACH", -1), 10050, 10051}
+    disabled = {
+        getattr(errno, "ENETDOWN", -1),
+        getattr(errno, "ENETUNREACH", -1),
+        10050,
+        10051,
+    }
     rejected = {errno.ECONNREFUSED, 10061}
-    not_found = {getattr(errno, "EHOSTDOWN", -1), getattr(errno, "EHOSTUNREACH", -1), 10064, 10065}
+    not_found = {
+        getattr(errno, "EHOSTDOWN", -1),
+        getattr(errno, "EHOSTUNREACH", -1),
+        10064,
+        10065,
+    }
     lost = {errno.ECONNRESET, errno.ENOTCONN, errno.ECONNABORTED, 10053, 10054, 10057}
     if code in timed_out:
         return BmapTimeoutError("Timed out while attempting to %s" % action)
     if code in denied:
         return BmapConnectionError(
             "Bluetooth access was denied while attempting to %s" % action,
-            code="ACCESS_DENIED", channel=channel,
+            code="ACCESS_DENIED",
+            channel=channel,
         )
     if code in unavailable:
         return BmapConnectionError(
-            "Bluetooth RFCOMM is unavailable", code="BLUETOOTH_UNAVAILABLE",
+            "Bluetooth RFCOMM is unavailable",
+            code="BLUETOOTH_UNAVAILABLE",
             channel=channel,
         )
     if code in disabled:
         return BmapConnectionError(
-            "The Bluetooth radio is disabled", code="BLUETOOTH_DISABLED",
+            "The Bluetooth radio is disabled",
+            code="BLUETOOTH_DISABLED",
             channel=channel,
         )
     if code in rejected:
         return BmapConnectionError(
             "The device rejected RFCOMM channel %s" % channel,
-            code="SERVICE_NOT_FOUND", channel=channel,
+            code="SERVICE_NOT_FOUND",
+            channel=channel,
         )
     if code in not_found:
         return BmapConnectionError(
-            "The Bluetooth device is unavailable", code="DEVICE_NOT_FOUND",
+            "The Bluetooth device is unavailable",
+            code="DEVICE_NOT_FOUND",
             channel=channel,
         )
     if code in lost:
         return BmapConnectionError(
-            "The Bluetooth device connection was lost", code="DEVICE_LOST",
+            "The Bluetooth device connection was lost",
+            code="DEVICE_LOST",
             channel=channel,
         )
     return BmapConnectionError("Failed to %s" % action, channel=channel)

@@ -1,17 +1,26 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { DeviceSnapshot } from "../contracts";
-import { deviceCncLevel, profileAncStrength, ProfilesPage } from "./ProfilesPage";
+import {
+  deviceCncLevel,
+  profileAncStrength,
+  ProfilesPage,
+} from "./ProfilesPage";
 
 const snapshot: DeviceSnapshot = {
-  identity: null, battery: null, firmware: null,
+  identity: null,
+  battery: null,
+  firmware: null,
   connection: { state: "connected", reason: null, rfcomm_channel: 2 },
   capabilities: {
-    noise_control: null, equalizer: [], settings: [],
+    noise_control: null,
+    equalizer: [],
+    settings: [],
     profiles: { maximum: 7, supports_delete: true },
   },
   values: { noise_control: null, eq: {}, settings: {}, profile_id: "0" },
-  generation: 1, revision: 1,
+  generation: 1,
+  revision: 1,
 };
 
 describe("profile controls", () => {
@@ -23,7 +32,13 @@ describe("profile controls", () => {
   });
 
   it("does not expose a save action before New or Edit is chosen", () => {
-    const html = renderToStaticMarkup(<ProfilesPage snapshot={snapshot} onSnapshot={() => undefined} onError={() => undefined} />);
+    const html = renderToStaticMarkup(
+      <ProfilesPage
+        snapshot={snapshot}
+        onSnapshot={() => undefined}
+        onError={() => undefined}
+      />,
+    );
     expect(html).toContain("Profile details");
     expect(html).not.toContain("Save changes");
     expect(html).not.toContain("Create profile");

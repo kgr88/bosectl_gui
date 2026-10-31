@@ -6,8 +6,12 @@ from collections import deque
 from queue import Empty, Queue
 
 from .protocol import (
-    ProtocolError, encode_message, error_response, event_message,
-    parse_request_line, success_response,
+    ProtocolError,
+    encode_message,
+    error_response,
+    event_message,
+    parse_request_line,
+    success_response,
 )
 from .service import BackendService
 from .protocol import MAX_LINE_BYTES
@@ -81,8 +85,11 @@ def run(stdin=None, stdout=None, stderr=None, service=None):
 
         if parse_error is not None:
             message = error_response(
-                parse_error.request_id, parse_error.code, parse_error.message,
-                parse_error.retryable, parse_error.details,
+                parse_error.request_id,
+                parse_error.code,
+                parse_error.message,
+                parse_error.retryable,
+                parse_error.details,
             )
             stdout.write(encode_message(message))
             stdout.flush()
@@ -93,12 +100,20 @@ def run(stdin=None, stdout=None, stderr=None, service=None):
             result = service.handle(latest.method, latest.params)
             messages = [success_response(item.request_id, result) for item in group]
         except ProtocolError as exc:
-            messages = [error_response(
-                item.request_id, exc.code, exc.message, exc.retryable, exc.details
-            ) for item in group]
-        except Exception as exc:  # Never log request data, addresses, packets, or traces.
+            messages = [
+                error_response(
+                    item.request_id, exc.code, exc.message, exc.retryable, exc.details
+                )
+                for item in group
+            ]
+        except (
+            Exception
+        ) as exc:  # Never log request data, addresses, packets, or traces.
             print("backend internal error: %s" % type(exc).__name__, file=stderr)
-            messages = [error_response(item.request_id, "INTERNAL", "internal backend error") for item in group]
+            messages = [
+                error_response(item.request_id, "INTERNAL", "internal backend error")
+                for item in group
+            ]
 
         for message in messages:
             stdout.write(encode_message(message))

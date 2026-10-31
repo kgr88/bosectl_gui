@@ -1,15 +1,20 @@
-export const button = "min-h-[34px] cursor-pointer rounded-[7px] border border-[#164da8] bg-accent px-[13px] py-[7px] text-white disabled:cursor-default disabled:opacity-55";
+export const button =
+  "min-h-[34px] cursor-pointer rounded-[7px] border border-[#164da8] bg-accent px-[13px] py-[7px] text-white disabled:cursor-default disabled:opacity-55";
 export const secondaryButton = `${button} border-border bg-surface-raised text-ink`;
 export const selectedButton = `${button} border-accent bg-accent-soft text-accent`;
 export const dangerButton = `${button} border-danger/45 bg-transparent text-danger`;
 export const iconButton = "min-h-[29px] px-2 py-1 text-xs";
-export const input = "min-h-[34px] rounded-[7px] border border-border bg-surface px-[9px] py-1.5 text-ink";
+export const input =
+  "min-h-[34px] rounded-[7px] border border-border bg-surface px-[9px] py-1.5 text-ink";
 export const select = input;
-export const card = "mt-5 rounded-xl border border-border bg-surface p-5 shadow-card forced-colors:border-[CanvasText]";
+export const card =
+  "mt-5 rounded-xl border border-border bg-surface p-5 shadow-card forced-colors:border-[CanvasText]";
 export const heading = "flex items-center justify-between gap-3.5";
-export const eyebrow = "mb-1 text-[11px] font-bold tracking-[0.09em] text-muted uppercase";
+export const eyebrow =
+  "mb-1 text-[11px] font-bold tracking-[0.09em] text-muted uppercase";
 export const muted = "mt-4 leading-6 text-muted";
-export const pageGrid = "grid grid-cols-[repeat(auto-fit,minmax(330px,1fr))] gap-[18px] max-[600px]:grid-cols-1";
+export const pageGrid =
+  "grid grid-cols-[repeat(auto-fit,minmax(330px,1fr))] gap-[18px] max-[600px]:grid-cols-1";
 export const row = "flex items-center justify-between gap-3.5";
 export const smallMuted = "mt-[3px] block text-muted";
 export const fieldLabel = "grid gap-1.5 text-[13px] text-muted";
