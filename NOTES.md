@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-**We can control the headphones from Linux without the Bose app, Bose account, or cloud.**
+**We can control the headphones from a PC without the Bose app, Bose account, or cloud.**
 
 The AudioModes function block (block 31) accepts the `START` operator without
 authentication. This lets us switch ANC modes, read battery, read all device info,
@@ -574,7 +574,7 @@ From `DeviceManagementPackets.java`:
 - `captures/` — Captured setting toggle data (8 captures)
 - `snoop/` — Network captures and bugreports
 
-## Quick Reference: Control Headphones from Linux
+## Quick Reference: Control Headphones over RFCOMM
 
 ```python
 import socket
@@ -661,6 +661,5 @@ of unauthenticated NC control on this firmware version.
 - Explore [31.9] AudioModes Reset — factory reset individual modes?
 - ~~Reverse audio source/device routing~~ **DONE** — [5.1] source query, [4.12] routing START, [5.3] transport controls
 - Implement [5.3] AudioManagement Control — play/pause/skip (payload format now known)
-- Build a system tray widget / PipeWire integration
 - Investigate firmware downgrade via bose-dfu over USB
 - Map the unknown bytes [40-41] in ModeConfig STATUS (mode-type specific config?)
