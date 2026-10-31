@@ -1,6 +1,7 @@
 """Smoke-test a frozen backend without requiring Bluetooth hardware."""
 
 import json
+import os
 import subprocess
 import sys
 
