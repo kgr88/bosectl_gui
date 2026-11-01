@@ -1,5 +1,6 @@
 """Fail when the release version differs between the project files."""
 
+import argparse
 import json
 import re
 import sys
@@ -18,12 +19,16 @@ def read_versions() -> dict[str, str]:
     tauri_conf = json.loads(read_text("desktop/src-tauri/tauri.conf.json"))
     cargo = tomllib.loads(read_text("desktop/src-tauri/Cargo.toml"))
     pyproject = tomllib.loads(read_text("python/pyproject.toml"))
+    pybmap_init = read_text("python/pybmap/__init__.py")
     backend_version = read_text("packaging/windows/backend-version.txt")
     return {
         "desktop/package.json": package_json["version"],
         "desktop/src-tauri/tauri.conf.json": tauri_conf["version"],
         "desktop/src-tauri/Cargo.toml": cargo["package"]["version"],
         "python/pyproject.toml": pyproject["project"]["version"],
+        "python/pybmap/__init__.py": re.search(
+            r'^__version__ = "([^"]+)"', pybmap_init, re.MULTILINE
+        ).group(1),
         "backend-version.txt FileVersion": re.search(
             r"StringStruct\(u'FileVersion', u'([^']+)'\)", backend_version
         ).group(1),
@@ -34,11 +39,19 @@ def read_versions() -> dict[str, str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tag", help="Release tag that must match, such as v0.3.0.")
+    args = parser.parse_args()
+
     versions = read_versions()
     for path, version in versions.items():
         print(f"{path}: {version}")
     if len(set(versions.values())) != 1:
         print("Version mismatch: all files must use one version.", file=sys.stderr)
+        return 1
+    version = versions["python/pyproject.toml"]
+    if args.tag is not None and args.tag != f"v{version}":
+        print(f"Tag {args.tag} does not match version {version}.", file=sys.stderr)
         return 1
     return 0
 
