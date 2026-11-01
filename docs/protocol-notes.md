@@ -571,8 +571,7 @@ From `DeviceManagementPackets.java`:
 
 ## Tools
 - `python/tools/bmap-capture.py` — Interactive setting change capture tool
-- `captures/` — Captured setting toggle data (8 captures)
-- `snoop/` — Network captures and bugreports
+- `fixtures/packets/qc-ultra-2/` — Captured setting toggle data (8 captures)
 
 ## Quick Reference: Control Headphones over RFCOMM
 
