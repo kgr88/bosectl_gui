@@ -15,6 +15,6 @@
 
 ## Checklist
 
-- [ ] Tests pass (`pytest` in `python/`)
+- [ ] All checks in CONTRIBUTING.md pass
 - [ ] Protocol notes updated in docs/protocol-notes.md (if applicable)
 - [ ] Architecture docs updated (if applicable)

@@ -62,6 +62,9 @@ pybmap.known_devices()  # full catalog
 | **QC Ultra Headphones 2** | CNC 0-10 slider | 3-band | room/head | 7 custom slots | Shortcut remap | Verified |
 | **QuietComfort 35 / 35 II** | ANR off/high/wind/low | — | — | — | Action remap (VPA/ANC) | Verified |
 
+QuietComfort Ultra Earbuds (2nd Gen) (`edith`, `0x4062`) uses the QC Ultra
+Headphones 2 config. It is supported but not tested.
+
 ### Known devices without a tested config
 
 | Device | Codename | Category | PID |
@@ -109,7 +112,7 @@ setting.
 The protocol was mapped in these steps:
 
 1. Connect over RFCOMM and probe all channels. QC Ultra 2 firmware responds on
-   channels 2 and 1. QC35 responds on channel 8.
+   channel 2. QC35 responds on channel 8.
 2. Capture Bluetooth HCI traffic while toggling settings in the Bose app.
 3. DNS-hijack the cloud API. Mode switching still works, because the app uses
    START, not SET.

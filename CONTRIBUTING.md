@@ -21,6 +21,8 @@ project, run the checks, and open a pull request.
 
 ## Set up
 
+Start each step from the repository root.
+
 1. Install the Python package and the development tools:
 
    ```powershell
@@ -36,9 +38,10 @@ project, run the checks, and open a pull request.
    corepack pnpm install
    ```
 
-3. Start the app in development mode from `desktop/`:
+3. Start the app in development mode:
 
    ```powershell
+   cd desktop
    corepack pnpm dev
    ```
 

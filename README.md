@@ -1,7 +1,7 @@
 # bosectl
 
 [![CI](https://github.com/kgr88/bosectl_gui/actions/workflows/ci.yml/badge.svg)](https://github.com/kgr88/bosectl_gui/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/kgr88/bosectl_gui)](https://github.com/kgr88/bosectl_gui/releases/latest)
+[![Release](https://img.shields.io/github/v/release/kgr88/bosectl_gui?include_prereleases)](https://github.com/kgr88/bosectl_gui/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows_10_%7C_11-0078D4.svg)](#requirements)
 
@@ -11,11 +11,9 @@ bosectl is a small Windows app that connects directly to your paired Bose
 headphones over Bluetooth. It stays in the system tray, so your headphone
 controls are always one click away.
 
-<!-- Add a screenshot of the main window here, for example docs/images/screenshot.png -->
-
 ## Download
 
-[**Download the latest installer**](https://github.com/kgr88/bosectl_gui/releases/latest)
+[**Download the latest installer**](https://github.com/kgr88/bosectl_gui/releases)
 (`bosectl_<version>_x64-setup.exe`).
 
 ## Features
@@ -36,6 +34,7 @@ The app only shows the controls that your headphones support.
 |------------|--------|
 | QuietComfort Ultra Headphones (2nd Gen) | Tested |
 | QuietComfort 35 / 35 II | Tested |
+| QuietComfort Ultra Earbuds (2nd Gen) | Supported, not tested |
 
 The app also recognizes other Bose headphones, earbuds, and speakers.
 These devices are not tested yet. If you own one, please
@@ -51,24 +50,28 @@ You do not need administrator rights, Python, or any other runtime.
 
 ## Install
 
-1. Download the installer from the [latest release](https://github.com/kgr88/bosectl_gui/releases/latest).
+1. Download the installer from the [releases page](https://github.com/kgr88/bosectl_gui/releases).
 2. Run the installer.
 3. If Windows SmartScreen shows a warning, select **More info**, then **Run anyway**.
    The installer is not code-signed yet, so Windows shows this warning.
 4. Start **bosectl** from the Start menu.
 
-Optional: compare the installer hash with the `.sha256` file from the release:
+Optional: compare the installer hash with the `.sha256` file from the release.
+Put both files in the same folder, then run this command there. It prints
+`True` when the hashes match:
 
 ```powershell
-Get-FileHash .\bosectl_<version>_x64-setup.exe -Algorithm SHA256
+(Get-FileHash .\bosectl_<version>_x64-setup.exe -Algorithm SHA256).Hash -eq (Get-Content .\bosectl_<version>_x64-setup.exe.sha256).Split(' ')[0]
 ```
 
 ## Use
 
 1. Pair your headphones in Windows **Settings > Bluetooth & devices**.
-2. Start bosectl. The app finds your paired headphones and connects.
-3. Change settings in the main window.
-4. Close the window to keep bosectl in the tray.
+2. Start bosectl.
+3. Select **Find devices**, then select **Connect** next to your headphones.
+   If the connection drops, the app tries to reconnect three times.
+4. Change settings in the main window.
+5. Close the window to keep bosectl in the tray.
    Right-click the tray icon and select **Quit** to stop the app.
 
 ## Troubleshooting
