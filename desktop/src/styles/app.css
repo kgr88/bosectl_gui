@@ -85,6 +85,11 @@
   select {
     font: inherit;
   }
+  /* The select background is translucent, so the native popup would fall
+     back to light colors behind the inherited text color. */
+  option {
+    @apply bg-surface text-ink;
+  }
   button:focus-visible,
   input:focus-visible,
   select:focus-visible,
