@@ -2,14 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import type { DeviceSnapshot } from "../contracts";
 import { LatestWriteQueue } from "../state/latestWrite";
-import {
-  card,
-  eyebrow,
-  heading,
-  muted,
-  secondaryButton,
-  selectedButton,
-} from "../styles/ui";
+import { Slider } from "../components/Controls";
+import { group, section, sectionHeader } from "../styles/ui";
 
 interface Props {
   snapshot: DeviceSnapshot;
@@ -70,36 +64,35 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
 
   if (!capability) {
     return (
-      <section className={card}>
-        <h2 className="text-[19px] font-bold">Noise control</h2>
-        <p className={muted}>
-          This device does not report a supported noise-control capability.
-        </p>
+      <section className={section}>
+        <div className={`${group} px-4 py-6 text-center text-muted`}>
+          Noise control isn’t available on these headphones.
+        </div>
       </section>
     );
   }
+  const range = capability.range;
   return (
-    <section className={card} aria-labelledby="noise-title">
-      <div className={heading}>
-        <div>
-          <p className={eyebrow}>Listening</p>
-          <h2 className="text-[19px] font-bold" id="noise-title">
-            Active noise cancellation
-          </h2>
-        </div>
-        <output className="min-w-[42px] rounded-full bg-accent-soft px-2.5 py-[5px] text-center font-bold text-accent">
-          {String(value)}
-        </output>
-      </div>
-      {capability.range ? (
-        <label className="mt-[22px] block">
-          <span className="mb-3 block font-semibold">ANC strength</span>
-          <input
-            aria-label="Active noise cancellation strength"
-            type="range"
-            min={capability.range.minimum}
-            max={capability.range.maximum}
-            step={capability.range.step}
+    <section className={section} aria-labelledby="noise-title">
+      <h2 className={sectionHeader} id="noise-title">
+        Noise Control
+      </h2>
+      {range ? (
+        <div className={`${group} px-5 pt-5 pb-4`}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[17px] font-semibold">
+              Noise Cancellation
+            </span>
+            <output className="text-[28px] font-semibold tabular-nums text-accent">
+              {String(value)}
+            </output>
+          </div>
+          <Slider
+            className="mt-3"
+            aria-label="Noise cancellation strength"
+            min={range.minimum}
+            max={range.maximum}
+            step={range.step}
             value={Number(value)}
             onChange={(event) => {
               const next = Number(event.currentTarget.value);
@@ -110,20 +103,20 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
             onPointerUp={() => void queue.flush()}
             onKeyUp={() => void queue.flush()}
           />
-          <span className="flex justify-between text-xs text-muted">
-            <span>Awareness</span>
-            <span>Maximum ANC</span>
+          <span className="mt-1 flex justify-between text-[13px] text-muted">
+            <span>Aware</span>
+            <span>Quiet</span>
           </span>
-        </label>
+        </div>
       ) : (
         <div
-          className="mt-5 flex flex-wrap gap-[7px]"
+          className="flex gap-0.5 rounded-[12px] bg-fill p-0.5"
           role="group"
           aria-label="Noise control mode"
         >
           {capability.options.map((option) => (
             <button
-              className={`${value === option.value ? selectedButton : secondaryButton} min-w-20 flex-1`}
+              className={`${value === option.value ? "bg-surface font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-10 min-w-20 flex-1 cursor-pointer rounded-[10px] border-0 px-3 text-ink transition-all`}
               type="button"
               aria-pressed={value === option.value}
               key={option.value}

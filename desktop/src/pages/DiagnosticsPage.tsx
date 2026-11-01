@@ -1,20 +1,17 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
-import type { BackendInfo, DeviceSnapshot } from "../contracts";
+import type { DeviceSnapshot } from "../contracts";
 import {
-  button,
-  buttonRow,
-  card,
-  eyebrow,
-  secondaryButton,
+  dangerTextButton,
+  groupList,
+  row,
+  section,
+  sectionHeader,
+  textButton,
 } from "../styles/ui";
 
 export function diagnosticAddress(address: string | null | undefined): string {
-  if (!address) return "Not reported";
+  if (!address) return "Unknown";
   const parts = address.split(":");
-  return parts.length === 6
-    ? `••:••:••:••:${parts[4]}:${parts[5]}`
-    : "Redacted";
+  return parts.length === 6 ? `••:••:••:••:${parts[4]}:${parts[5]}` : "Hidden";
 }
 
 export function DiagnosticsPage({
@@ -28,83 +25,52 @@ export function DiagnosticsPage({
   onRefresh: () => void;
   onDisconnect: () => void;
 }) {
-  const [backend, setBackend] = useState<BackendInfo | null>(null);
-  useEffect(() => {
-    let active = true;
-    void api
-      .backendInfo()
-      .then((info) => active && setBackend(info))
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-  const item = "bg-surface-raised p-[11px]";
-  const term = "text-xs text-muted";
-  const value = "mt-1 [overflow-wrap:anywhere]";
+  const details = [
+    ["Model", snapshot.identity?.model ?? "Unknown"],
+    ["Software version", snapshot.firmware?.version || "Unknown"],
+    ["Bluetooth address", diagnosticAddress(snapshot.identity?.address)],
+  ];
   return (
-    <section className={card} aria-labelledby="diagnostics-title">
-      <p className={eyebrow}>Support</p>
-      <h2 className="text-[19px] font-bold" id="diagnostics-title">
-        Diagnostics
-      </h2>
-      <dl className="my-[18px] grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border max-[600px]:grid-cols-1">
-        <div className={item}>
-          <dt className={term}>Model</dt>
-          <dd className={value}>{snapshot.identity?.model ?? "Unknown"}</dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>Firmware</dt>
-          <dd className={value}>{snapshot.firmware?.version || "Unknown"}</dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>Connection generation</dt>
-          <dd className={value}>{snapshot.generation}</dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>Snapshot revision</dt>
-          <dd className={value}>{snapshot.revision}</dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>Address</dt>
-          <dd className={value}>
-            {diagnosticAddress(snapshot.identity?.address)}
-          </dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>RFCOMM channel</dt>
-          <dd className={value}>
-            {snapshot.connection.rfcomm_channel ?? "Not reported"}
-          </dd>
-        </div>
-        <div className={item}>
-          <dt className={term}>Backend</dt>
-          <dd className={value}>
-            {backend
-              ? `${backend.backend_version} · Python ${backend.python_version}`
-              : "Loading…"}
-          </dd>
-        </div>
-        <div className={`${item} max-[600px]:hidden`} aria-hidden="true" />
-      </dl>
-      <div className={buttonRow}>
-        <button
-          className={button}
-          type="button"
-          disabled={busy}
-          onClick={onRefresh}
-        >
-          Refresh now
-        </button>
-        <button
-          className={secondaryButton}
-          type="button"
-          disabled={busy}
-          onClick={onDisconnect}
-        >
-          Disconnect
-        </button>
-      </div>
-    </section>
+    <>
+      <section className={section} aria-labelledby="about-title">
+        <h2 className={sectionHeader} id="about-title">
+          Headphones
+        </h2>
+        <dl className={`${groupList} m-0`}>
+          {details.map(([term, value]) => (
+            <div className={row} key={term}>
+              <dt>{term}</dt>
+              <dd className="m-0 text-right text-muted [overflow-wrap:anywhere]">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <section className={section} aria-label="Connection">
+        <ul className={groupList}>
+          <li>
+            <button
+              className={`${textButton} ${row} w-full`}
+              type="button"
+              disabled={busy}
+              onClick={onRefresh}
+            >
+              Refresh
+            </button>
+          </li>
+          <li>
+            <button
+              className={`${dangerTextButton} ${row} w-full`}
+              type="button"
+              disabled={busy}
+              onClick={onDisconnect}
+            >
+              Disconnect
+            </button>
+          </li>
+        </ul>
+      </section>
+    </>
   );
 }
