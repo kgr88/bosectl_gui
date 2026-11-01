@@ -29,6 +29,8 @@
   --ui-surface: #fff;
   --ui-fill: rgb(118 118 128 / 12%);
   --ui-control: #efeff0;
+  --ui-app-elevated: #f2f2f7;
+  --ui-surface-elevated: #fff;
   --ui-separator: rgb(60 60 67 / 18%);
   --ui-muted: #6e6e73;
   --ui-danger: #ff3b30;
@@ -47,6 +49,8 @@
   --ui-surface: #1c1c1e;
   --ui-fill: rgb(118 118 128 / 24%);
   --ui-control: #323236;
+  --ui-app-elevated: #1c1c1e;
+  --ui-surface-elevated: #2c2c2e;
   --ui-separator: rgb(84 84 88 / 55%);
   --ui-muted: #98989d;
   --ui-danger: #ff453a;
@@ -66,6 +70,10 @@
     --ui-surface: #1c1c1e;
     --ui-fill: rgb(118 118 128 / 24%);
     --ui-control: #323236;
+    --ui-app-elevated: #1c1c1e;
+    --ui-surface-elevated: #2c2c2e;
+    --ui-app-elevated: #1c1c1e;
+    --ui-surface-elevated: #2c2c2e;
     --ui-separator: rgb(84 84 88 / 55%);
     --ui-muted: #98989d;
     --ui-danger: #ff453a;
@@ -99,6 +107,19 @@
   select:focus-visible,
   summary:focus-visible {
     @apply outline-3 outline-offset-2 outline-focus/60;
+  }
+
+  /* Sheets sit above the page, so they use the elevated colors. Without
+     them a black sheet has no edge on the black page in dark mode. */
+  dialog {
+    --color-app: var(--ui-app-elevated);
+    --color-surface: var(--ui-surface-elevated);
+  }
+  dialog[open] {
+    animation: sheet-in 0.3s ease-out;
+  }
+  dialog[open]::backdrop {
+    animation: fade-in 0.3s ease-out;
   }
 
   /* Apple-style slider: thin rounded track, filled up to the white knob. */
@@ -183,6 +204,19 @@
   }
 }
 
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (forced-colors: active) {
   input[type="range"] {
     appearance: auto;
@@ -195,5 +229,6 @@
   *::after {
     scroll-behavior: auto !important;
     transition: none !important;
+    animation: none !important;
   }
 }

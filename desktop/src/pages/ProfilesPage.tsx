@@ -6,16 +6,14 @@ import type {
   ProfileInput,
   ProfileList,
 } from "../contracts";
-import { Select, Slider, Toggle } from "../components/Controls";
+import { Select, Sheet, Slider, Toggle } from "../components/Controls";
 import {
-  button,
   dangerTextButton,
   group,
   groupList,
   input,
   row,
   rowDetail,
-  secondaryButton,
   section,
   sectionFooter,
   sectionHeader,
@@ -95,6 +93,10 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function close() {
+    if (!busy) setDraft(null);
   }
 
   async function remove(profile: Profile) {
@@ -221,133 +223,138 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
             })}
           </ul>
         )}
-        {!draft && <p className={sectionFooter}>Select a mode to use it.</p>}
+        <p className={sectionFooter}>Select a mode to use it.</p>
       </section>
 
       {draft && (
-        <section className={section} aria-labelledby="profile-editor-title">
-          <h2 className={sectionHeader} id="profile-editor-title">
-            {draft.profile_id ? "Edit Mode" : "New Mode"}
-          </h2>
-          <div className={`${group} divide-y divide-separator`}>
-            <label className={row}>
-              <span>Name</span>
-              <input
-                className={`${input} w-[min(240px,60%)] text-right`}
-                maxLength={64}
-                value={draft.name}
-                onChange={(event) =>
-                  setDraft({ ...draft, name: event.currentTarget.value })
-                }
-              />
-            </label>
-            <label className={row}>
-              <span>Noise cancelling</span>
-              <Toggle
-                checked={draft.anc_toggle}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    anc_toggle: event.currentTarget.checked,
-                  })
-                }
-              />
-            </label>
-            <label className="block px-4 py-3">
-              <span className="flex justify-between">
-                <span>Strength</span>
-                <output className="text-muted tabular-nums">
-                  {profileAncStrength(draft.cnc_level)}
-                </output>
-              </span>
-              <Slider
-                aria-label="Noise cancelling strength"
-                min={0}
-                max={10}
-                value={profileAncStrength(draft.cnc_level)}
-                disabled={!draft.anc_toggle}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    cnc_level: deviceCncLevel(
-                      Number(event.currentTarget.value),
-                    ),
-                  })
-                }
-              />
-              <span className="flex justify-between text-[13px] text-muted">
-                <span>Aware</span>
-                <span>Quiet</span>
-              </span>
-            </label>
-            <label className={row}>
-              <span>Adjust automatically</span>
-              <Toggle
-                checked={draft.auto_cnc}
-                disabled={!draft.anc_toggle}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    auto_cnc: event.currentTarget.checked,
-                  })
-                }
-              />
-            </label>
-            <label className={row}>
-              <span>Spatial audio</span>
-              <Select
-                value={draft.spatial}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    spatial: event.currentTarget
-                      .value as ProfileInput["spatial"],
-                  })
-                }
-              >
-                {Object.entries(spatialLabels).map(([value, label]) => (
-                  <option value={value} key={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className={row}>
-              <span>Wind block</span>
-              <Toggle
-                checked={draft.wind_block}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    wind_block: event.currentTarget.checked,
-                  })
-                }
-              />
-            </label>
-          </div>
-          <p className={sectionFooter}>
-            Wind block reduces wind noise. It can make strength changes harder
-            to hear.
-          </p>
-          <div className="mt-4 flex justify-end gap-3">
+        <Sheet aria-labelledby="profile-editor-title" onClose={close}>
+          <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-separator px-4 py-3">
             <button
-              className={secondaryButton}
+              className={`${textButton} justify-self-start`}
               type="button"
               disabled={busy}
-              onClick={() => setDraft(null)}
+              onClick={close}
             >
               Cancel
             </button>
+            <h2
+              className="m-0 text-[17px] font-semibold"
+              id="profile-editor-title"
+            >
+              {draft.profile_id ? "Edit Mode" : "New Mode"}
+            </h2>
             <button
-              className={button}
+              className={`${textButton} justify-self-end font-semibold`}
               type="button"
               disabled={busy || !draft.name.trim()}
               onClick={() => void save()}
             >
               {draft.profile_id ? "Save" : "Create"}
             </button>
+          </header>
+          <div className="overflow-y-auto px-4 pt-5 pb-6">
+            <div className={`${group} divide-y divide-separator`}>
+              <label className={row}>
+                <span>Name</span>
+                <input
+                  className={`${input} w-[min(240px,60%)] text-right`}
+                  maxLength={64}
+                  value={draft.name}
+                  onChange={(event) =>
+                    setDraft({ ...draft, name: event.currentTarget.value })
+                  }
+                />
+              </label>
+              <label className={row}>
+                <span>Noise cancelling</span>
+                <Toggle
+                  checked={draft.anc_toggle}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      anc_toggle: event.currentTarget.checked,
+                    })
+                  }
+                />
+              </label>
+              <label className="block px-4 py-3">
+                <span className="flex justify-between">
+                  <span>Strength</span>
+                  <output className="text-muted tabular-nums">
+                    {profileAncStrength(draft.cnc_level)}
+                  </output>
+                </span>
+                <Slider
+                  aria-label="Noise cancelling strength"
+                  min={0}
+                  max={10}
+                  value={profileAncStrength(draft.cnc_level)}
+                  disabled={!draft.anc_toggle}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      cnc_level: deviceCncLevel(
+                        Number(event.currentTarget.value),
+                      ),
+                    })
+                  }
+                />
+                <span className="flex justify-between text-[13px] text-muted">
+                  <span>Aware</span>
+                  <span>Quiet</span>
+                </span>
+              </label>
+              <label className={row}>
+                <span>Adjust automatically</span>
+                <Toggle
+                  checked={draft.auto_cnc}
+                  disabled={!draft.anc_toggle}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      auto_cnc: event.currentTarget.checked,
+                    })
+                  }
+                />
+              </label>
+              <label className={row}>
+                <span>Spatial audio</span>
+                <Select
+                  value={draft.spatial}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      spatial: event.currentTarget
+                        .value as ProfileInput["spatial"],
+                    })
+                  }
+                >
+                  {Object.entries(spatialLabels).map(([value, label]) => (
+                    <option value={value} key={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className={row}>
+                <span>Wind block</span>
+                <Toggle
+                  checked={draft.wind_block}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      wind_block: event.currentTarget.checked,
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <p className={sectionFooter}>
+              Wind block reduces wind noise. It can make strength changes harder
+              to hear.
+            </p>
           </div>
-        </section>
+        </Sheet>
       )}
     </>
   );

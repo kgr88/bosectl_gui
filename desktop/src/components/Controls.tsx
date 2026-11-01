@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react";
 import type {
   CSSProperties,
+  DialogHTMLAttributes,
   InputHTMLAttributes,
   SelectHTMLAttributes,
 } from "react";
@@ -68,5 +70,28 @@ export function Toggle({ className, ...props }: ToggleProps) {
         className="pointer-events-none absolute top-0.5 left-0.5 size-[27px] rounded-full bg-white shadow-control transition-transform peer-checked:translate-x-5 forced-colors:hidden"
       />
     </span>
+  );
+}
+
+type SheetProps = Omit<DialogHTMLAttributes<HTMLDialogElement>, "onCancel"> & {
+  onClose: () => void;
+};
+
+// A modal sheet. It opens on mount; the parent closes it by unmounting it.
+export function Sheet({ onClose, className, ...props }: SheetProps) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+  }, []);
+  return (
+    <dialog
+      {...props}
+      ref={ref}
+      className={`m-auto max-h-[calc(100vh-48px)] w-[min(520px,calc(100vw-32px))] flex-col overflow-hidden rounded-[14px] border-0 bg-app p-0 text-ink shadow-control backdrop:bg-black/40 open:flex ${className ?? ""}`}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    />
   );
 }
