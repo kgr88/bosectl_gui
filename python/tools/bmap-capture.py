@@ -13,7 +13,9 @@ import time
 
 CHANNEL = 2
 CAPTURE_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "captures")
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "fixtures", "packets"
+    )
 )
 MAC_PATTERN = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 
