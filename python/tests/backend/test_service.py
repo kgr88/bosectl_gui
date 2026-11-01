@@ -46,8 +46,8 @@ class FakeConnection:
             "pairing",
         }
 
-    def battery(self):
-        return 72
+    def battery_levels(self):
+        return 72, None
 
     def firmware(self):
         return "4.8.1"
@@ -103,8 +103,8 @@ class FakeUltraConnection:
             "power",
         }
 
-    def battery(self):
-        return 88
+    def battery_levels(self):
+        return 88, 30
 
     def firmware(self):
         return "8.2.20"
@@ -172,7 +172,11 @@ def test_manual_connect_returns_capability_driven_qc35_snapshot():
         },
     )
     assert snapshot["connection"]["state"] == "connected"
-    assert snapshot["battery"]["percent"] == 72
+    assert snapshot["battery"] == {
+        "percent": 72,
+        "charging": None,
+        "case_percent": None,
+    }
     assert snapshot["capabilities"]["noise_control"]["kind"] == "anr"
     assert snapshot["capabilities"]["equalizer"] == []
     assert snapshot["values"]["noise_control"] == {"kind": "anr", "value": "high"}
@@ -291,6 +295,7 @@ def test_ultra_snapshot_reports_eq_profiles_and_audio_settings_from_features():
             }
         },
     )
+    assert snapshot["battery"]["case_percent"] == 30
     assert snapshot["capabilities"]["noise_control"]["kind"] == "cnc"
     assert [band["id"] for band in snapshot["capabilities"]["equalizer"]] == [
         "bass",

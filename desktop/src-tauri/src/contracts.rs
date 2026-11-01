@@ -138,6 +138,7 @@ pub struct DeviceIdentity {
 pub struct BatteryStatus {
     pub percent: u8,
     pub charging: Option<bool>,
+    pub case_percent: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -244,14 +245,12 @@ pub struct DeviceSnapshot {
 
 impl DeviceSnapshot {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
-        if self
-            .battery
-            .as_ref()
-            .is_some_and(|battery| battery.percent > 100)
-            || self
-                .connection
-                .rfcomm_channel
-                .is_some_and(|channel| !(1..=30).contains(&channel))
+        if self.battery.as_ref().is_some_and(|battery| {
+            battery.percent > 100 || battery.case_percent.is_some_and(|percent| percent > 100)
+        }) || self
+            .connection
+            .rfcomm_channel
+            .is_some_and(|channel| !(1..=30).contains(&channel))
             || self.identity.as_ref().is_some_and(|identity| {
                 !valid_text(&identity.device_id, 256)
                     || !valid_text(&identity.name, 256)
@@ -644,6 +643,24 @@ mod tests {
             value: NoiseControlInput::Text("high".into()),
         };
         assert!(request.validate().is_err());
+    }
+
+    #[test]
+    fn snapshot_rejects_case_battery_above_100() {
+        let snapshot = |case_percent: u8| -> DeviceSnapshot {
+            serde_json::from_value(serde_json::json!({
+                "identity": null,
+                "battery": {"percent": 70, "charging": null, "case_percent": case_percent},
+                "firmware": null,
+                "connection": {"state": "connected", "reason": null, "rfcomm_channel": 2},
+                "capabilities": {"noise_control": null, "equalizer": [], "settings": [], "profiles": null},
+                "values": {"noise_control": null, "eq": {}, "settings": {}, "profile_id": null},
+                "generation": 1, "revision": 0
+            }))
+            .unwrap()
+        };
+        assert!(snapshot(30).validate_wire().is_ok());
+        assert!(snapshot(101).validate_wire().is_err());
     }
 
     #[test]

@@ -47,6 +47,7 @@ FEATURES = {
     "battery": {
         "addr": (2, 2),
         "parser": parsers.parse_battery,
+        "case_parser": parsers.parse_case_battery,
     },
     "firmware": {
         "addr": (0, 5),

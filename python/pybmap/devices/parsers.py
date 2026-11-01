@@ -26,6 +26,21 @@ def parse_battery(payload):
     return None
 
 
+CASE_BATTERY_COMPONENT = 3
+
+
+def parse_case_battery(payload):
+    """Parse the charging case level from an earbuds battery STATUS.
+
+    Earbuds report 4-byte records [percent, 0xff, 0xff, component]; component 3
+    is the charging case. Returns None when no valid case record is present.
+    """
+    for i in range(0, len(payload) - 3, 4):
+        if payload[i + 3] == CASE_BATTERY_COMPONENT and payload[i] <= 100:
+            return payload[i]
+    return None
+
+
 def parse_firmware(payload):
     """Parse firmware version string."""
     return payload.decode("ascii", errors="replace")

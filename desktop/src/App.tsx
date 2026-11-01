@@ -313,6 +313,13 @@ export default function App() {
                 charging={snapshot.battery.charging}
               />
             )}
+            {connected && snapshot.battery?.case_percent != null && (
+              <Battery
+                label="Case"
+                percent={snapshot.battery.case_percent}
+                charging={null}
+              />
+            )}
           </div>
         </div>
         <button
@@ -428,9 +435,11 @@ export default function App() {
 }
 
 function Battery({
+  label,
   percent,
   charging,
 }: {
+  label?: string;
   percent: number;
   charging: boolean | null;
 }) {
@@ -442,8 +451,9 @@ function Battery({
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[13px] text-muted"
-      aria-label={`Battery ${percent} percent${charging ? ", charging" : ""}`}
+      aria-label={`${label ? `${label} battery` : "Battery"} ${percent} percent${charging ? ", charging" : ""}`}
     >
+      {label}
       <span
         aria-hidden="true"
         className="relative flex h-[11px] w-[22px] rounded-[3px] border border-muted p-px after:absolute after:top-[3px] after:-right-[3px] after:h-[3px] after:w-[1.5px] after:rounded-r-sm after:bg-muted"

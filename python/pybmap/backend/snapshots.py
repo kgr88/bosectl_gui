@@ -24,7 +24,7 @@ DeviceIdentity = namedtuple(
     "DeviceIdentity",
     ["device_id", "name", "model", "product_id", "device_type", "address"],
 )
-BatteryStatus = namedtuple("BatteryStatus", ["percent", "charging"])
+BatteryStatus = namedtuple("BatteryStatus", ["percent", "charging", "case_percent"])
 FirmwareInfo = namedtuple("FirmwareInfo", ["version"])
 ConnectionStatus = namedtuple("ConnectionStatus", ["state", "reason", "rfcomm_channel"])
 Choice = namedtuple("Choice", ["value", "label"])

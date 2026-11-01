@@ -71,6 +71,9 @@ class TestReadOperations:
     def test_battery(self, mock_dev):
         assert mock_dev.battery() == 80
 
+    def test_battery_levels_without_case(self, mock_dev):
+        assert mock_dev.battery_levels() == (80, None)
+
     def test_firmware(self, mock_dev):
         assert mock_dev.firmware() == "8.2.20+g34cf029"
 

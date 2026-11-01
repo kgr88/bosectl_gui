@@ -13,6 +13,7 @@ from pybmap.devices.parsers import (
     parse_battery,
     parse_bool,
     parse_buttons,
+    parse_case_battery,
     parse_cnc,
     parse_eq,
     parse_firmware,
@@ -36,6 +37,19 @@ class TestParseBattery:
 
     def test_empty(self):
         assert parse_battery(b"") is None
+
+
+class TestParseCaseBattery:
+    def test_earbuds_capture(self):
+        # QC Ultra Earbuds (2nd Gen): left, right, buds, then case at 30%.
+        payload = bytes.fromhex("46ffff0146ffff0246ffff041effff03")
+        assert parse_case_battery(payload) == 30
+
+    def test_headphones_have_no_case(self):
+        assert parse_case_battery(bytes.fromhex("50ffff00")) is None
+
+    def test_unknown_case_level(self):
+        assert parse_case_battery(bytes.fromhex("46ffff01ffffff03")) is None
 
 
 class TestParseFirmware:

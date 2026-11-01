@@ -140,6 +140,17 @@ class BmapConnection:
         """Battery percentage (int)."""
         return self._get("battery")
 
+    def battery_levels(self):
+        """Battery and charging case percentages from one read.
+
+        The case level is None when the device reports no case.
+        """
+        payload = self._get_payload("battery")
+        feat = self._feature("battery")
+        case_parser = feat.get("case_parser")
+        case = case_parser(payload) if case_parser else None
+        return feat["parser"](payload), case
+
     def firmware(self):
         """Firmware version string."""
         return self._get("firmware")

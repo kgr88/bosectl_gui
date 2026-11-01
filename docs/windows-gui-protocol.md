@@ -79,7 +79,8 @@ snapshots by `(generation, revision)` and ignore older pairs.
 
 `DeviceSnapshot` contains:
 
-- nullable identity, battery, and firmware;
+- nullable identity, battery, and firmware (battery carries a nullable
+  `case_percent` for the earbuds charging case);
 - connection state, nullable reason, and the validated RFCOMM channel;
 - capability descriptions for noise control, EQ bands, settings, profiles, and
   pairing/power actions;

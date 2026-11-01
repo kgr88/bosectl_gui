@@ -74,6 +74,7 @@ export interface DeviceIdentity {
 export interface BatteryStatus {
   percent: number;
   charging: boolean | null;
+  case_percent: number | null;
 }
 
 export interface FirmwareInfo {
@@ -391,6 +392,11 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
       !(
         value.battery.charging === null ||
         typeof value.battery.charging === "boolean"
+      ) ||
+      !(
+        value.battery.case_percent === null ||
+        (isNonNegativeInteger(value.battery.case_percent) &&
+          value.battery.case_percent <= 100)
       ))
   )
     return false;

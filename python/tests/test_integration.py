@@ -44,6 +44,11 @@ class TestRead:
         assert isinstance(batt, int)
         assert 0 <= batt <= 100
 
+    def test_battery_levels(self, dev):
+        batt, case = dev.battery_levels()
+        assert 0 <= batt <= 100
+        assert case is None or 0 <= case <= 100
+
     def test_firmware(self, dev):
         fw = dev.firmware()
         assert isinstance(fw, str)

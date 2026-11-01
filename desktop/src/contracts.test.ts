@@ -31,4 +31,14 @@ describe("renderer boundary contracts", () => {
       }),
     ).toBe(false);
   });
+  it("accepts a charging case level and rejects an impossible one", () => {
+    const battery = { percent: 70, charging: null, case_percent: 30 };
+    expect(isDeviceSnapshot({ ...snapshot, battery })).toBe(true);
+    expect(
+      isDeviceSnapshot({
+        ...snapshot,
+        battery: { ...battery, case_percent: 101 },
+      }),
+    ).toBe(false);
+  });
 });
