@@ -7,7 +7,8 @@ export const textButton =
 export const dangerTextButton = `${textButton} text-danger`;
 export const input =
   "min-h-[34px] rounded-[10px] border-0 bg-fill px-3 py-1.5 text-ink placeholder:text-muted";
-export const select = `${input} cursor-pointer pr-2`;
+export const select =
+  "min-h-[34px] cursor-pointer rounded-[10px] border-0 bg-control py-1.5 pr-2 pl-3 text-ink";
 export const section = "mt-7";
 export const sectionHeader =
   "mb-1.5 px-4 text-[13px] font-normal tracking-[0.02em] text-muted uppercase";

@@ -10,6 +10,7 @@
   --color-accent-soft: var(--ui-accent-soft);
   --color-surface: var(--ui-surface);
   --color-fill: var(--ui-fill);
+  --color-control: var(--ui-control);
   --color-separator: var(--ui-separator);
   --color-muted: var(--ui-muted);
   --color-danger: var(--ui-danger);
@@ -27,6 +28,7 @@
   --ui-accent-soft: rgb(0 122 255 / 12%);
   --ui-surface: #fff;
   --ui-fill: rgb(118 118 128 / 12%);
+  --ui-control: #efeff0;
   --ui-separator: rgb(60 60 67 / 18%);
   --ui-muted: #6e6e73;
   --ui-danger: #ff3b30;
@@ -44,6 +46,7 @@
   --ui-accent-soft: rgb(10 132 255 / 18%);
   --ui-surface: #1c1c1e;
   --ui-fill: rgb(118 118 128 / 24%);
+  --ui-control: #323236;
   --ui-separator: rgb(84 84 88 / 55%);
   --ui-muted: #98989d;
   --ui-danger: #ff453a;
@@ -62,6 +65,7 @@
     --ui-accent-soft: rgb(10 132 255 / 18%);
     --ui-surface: #1c1c1e;
     --ui-fill: rgb(118 118 128 / 24%);
+    --ui-control: #323236;
     --ui-separator: rgb(84 84 88 / 55%);
     --ui-muted: #98989d;
     --ui-danger: #ff453a;
@@ -128,6 +132,44 @@
   }
   input[type="range"].vertical::-webkit-slider-thumb {
     @apply mt-0 -ml-[11px];
+  }
+}
+
+/* Customizable select (Chromium 135+): the open list joins the button into
+   one rounded shape. Other engines keep the native popup. */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+  select {
+    @apply flex min-w-[8.5rem] items-center justify-between gap-1.5;
+  }
+  select::picker-icon {
+    @apply text-[11px] text-muted transition-transform;
+  }
+  select:open {
+    @apply rounded-b-none outline-none;
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+  }
+  ::picker(select) {
+    @apply rounded-b-[10px] border-0 bg-control py-1 shadow-card;
+    inline-size: anchor-size(inline);
+  }
+  option {
+    @apply flex min-h-8 cursor-pointer items-center gap-2 bg-transparent px-3 py-1;
+  }
+  option:hover,
+  option:focus-visible {
+    @apply bg-fill outline-none;
+  }
+  option:checked {
+    @apply font-semibold;
+  }
+  option::checkmark {
+    @apply text-accent;
   }
 }
 
