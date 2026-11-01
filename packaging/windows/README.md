@@ -10,7 +10,7 @@ Prerequisites are a 64-bit Windows 10 or 11 release machine with Python 3.12,
 PyInstaller, Node.js/Corepack, Rust/MSVC, and the normal project dependencies:
 
 ```powershell
-python -m pip install pyinstaller pytest
+python -m pip install -r packaging/windows/requirements-build.txt pytest
 corepack pnpm --dir desktop install --frozen-lockfile
 ```
 
