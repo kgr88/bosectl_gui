@@ -11,6 +11,7 @@
   --color-surface: var(--ui-surface);
   --color-fill: var(--ui-fill);
   --color-control: var(--ui-control);
+  --color-segment: var(--ui-segment);
   --color-separator: var(--ui-separator);
   --color-muted: var(--ui-muted);
   --color-danger: var(--ui-danger);
@@ -29,6 +30,7 @@
   --ui-surface: #fff;
   --ui-fill: rgb(118 118 128 / 12%);
   --ui-control: #efeff0;
+  --ui-segment: #fff;
   --ui-app-elevated: #f2f2f7;
   --ui-surface-elevated: #fff;
   --ui-separator: rgb(60 60 67 / 18%);
@@ -49,6 +51,7 @@
   --ui-surface: #1c1c1e;
   --ui-fill: rgb(118 118 128 / 24%);
   --ui-control: #323236;
+  --ui-segment: #636366;
   --ui-app-elevated: #1c1c1e;
   --ui-surface-elevated: #2c2c2e;
   --ui-separator: rgb(84 84 88 / 55%);
@@ -70,6 +73,8 @@
     --ui-surface: #1c1c1e;
     --ui-fill: rgb(118 118 128 / 24%);
     --ui-control: #323236;
+    --ui-segment: #636366;
+  --ui-segment: #636366;
     --ui-app-elevated: #1c1c1e;
     --ui-surface-elevated: #2c2c2e;
     --ui-app-elevated: #1c1c1e;

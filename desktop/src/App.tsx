@@ -362,7 +362,7 @@ export default function App() {
             {visiblePages.map((item) => (
               <button
                 type="button"
-                className={`${page === item.id ? "bg-surface font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-8 flex-1 cursor-pointer rounded-[8px] border-0 px-3 py-1 text-[13px] whitespace-nowrap text-ink transition-all`}
+                className={`${page === item.id ? "bg-segment font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-8 flex-1 cursor-pointer rounded-[8px] border-0 px-3 py-1 text-[13px] whitespace-nowrap text-ink transition-all`}
                 aria-current={page === item.id ? "page" : undefined}
                 key={item.id}
                 onClick={() => setPage(item.id)}

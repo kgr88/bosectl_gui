@@ -116,7 +116,7 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
         >
           {capability.options.map((option) => (
             <button
-              className={`${value === option.value ? "bg-surface font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-10 min-w-20 flex-1 cursor-pointer rounded-[10px] border-0 px-3 text-ink transition-all`}
+              className={`${value === option.value ? "bg-segment font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-10 min-w-20 flex-1 cursor-pointer rounded-[10px] border-0 px-3 text-ink transition-all`}
               type="button"
               aria-pressed={value === option.value}
               key={option.value}
