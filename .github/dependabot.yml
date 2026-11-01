@@ -82,3 +82,18 @@ updates:
         update-types:
           - minor
           - patch
+
+  - package-ecosystem: pip
+    directory: /packaging/windows
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
