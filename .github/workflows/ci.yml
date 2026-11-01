@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -30,6 +31,9 @@ jobs:
       - run: python -m ruff check
       - run: python -m ruff format --check
       - run: python -m pytest
+      - name: Check that version files match
+        working-directory: .
+        run: python packaging/windows/check_versions.py
       - name: Validate Dependabot config
         working-directory: .
         run: check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml
@@ -123,3 +127,21 @@ jobs:
           name: bosectl-installer
           path: desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*
           if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: [package]
+    # Tag pushes only. The release stays a draft until the installer is signed and tested.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: bosectl-installer
+          path: installer
+      - name: Create draft release with the installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --generate-notes installer/*
