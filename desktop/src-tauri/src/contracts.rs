@@ -138,6 +138,8 @@ pub struct DeviceIdentity {
 pub struct BatteryStatus {
     pub percent: u8,
     pub charging: Option<bool>,
+    pub left_percent: Option<u8>,
+    pub right_percent: Option<u8>,
     pub case_percent: Option<u8>,
 }
 
@@ -246,7 +248,14 @@ pub struct DeviceSnapshot {
 impl DeviceSnapshot {
     pub fn validate_wire(&self) -> Result<(), ApiError> {
         if self.battery.as_ref().is_some_and(|battery| {
-            battery.percent > 100 || battery.case_percent.is_some_and(|percent| percent > 100)
+            battery.percent > 100
+                || [
+                    battery.left_percent,
+                    battery.right_percent,
+                    battery.case_percent,
+                ]
+                .iter()
+                .any(|percent| percent.is_some_and(|percent| percent > 100))
         }) || self
             .connection
             .rfcomm_channel
@@ -646,11 +655,14 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_rejects_case_battery_above_100() {
-        let snapshot = |case_percent: u8| -> DeviceSnapshot {
+    fn snapshot_rejects_earbud_battery_above_100() {
+        let snapshot = |left_percent: u8| -> DeviceSnapshot {
             serde_json::from_value(serde_json::json!({
                 "identity": null,
-                "battery": {"percent": 70, "charging": null, "case_percent": case_percent},
+                "battery": {
+                    "percent": 60, "charging": null, "left_percent": left_percent,
+                    "right_percent": 60, "case_percent": 20
+                },
                 "firmware": null,
                 "connection": {"state": "connected", "reason": null, "rfcomm_channel": 2},
                 "capabilities": {"noise_control": null, "equalizer": [], "settings": [], "profiles": null},
@@ -659,7 +671,7 @@ mod tests {
             }))
             .unwrap()
         };
-        assert!(snapshot(30).validate_wire().is_ok());
+        assert!(snapshot(80).validate_wire().is_ok());
         assert!(snapshot(101).validate_wire().is_err());
     }
 

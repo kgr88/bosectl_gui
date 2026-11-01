@@ -418,9 +418,11 @@ Serial:  T5333020XXXXXXXXXXXXX
 | 2    | BatteryLevel    | 50ffff00   | 0x50 = 80% battery |
 
 Earbuds return several 4-byte `[percent, ff, ff, component]` records in [2.2].
-QC Ultra Earbuds (2nd Gen) returned `46ffff01 46ffff02 46ffff04 1effff03`.
-Component 3 is the charging case (0x1e = 30%). Components 1 and 2 are the
-earbuds; which one is left or right is not confirmed. Component 4 is not identified.
+QC Ultra Earbuds (2nd Gen) with the left earbud in the case (left 80%, right 60%)
+returned `3cffff01 50ffff02 3cffff04 14ffff03`. Component 1 is the right earbud,
+component 2 is the left earbud, and component 3 is the charging case (0x14 = 20%).
+Component 4 matched the lower earbud level in both captures; its meaning is not
+confirmed. A level of 0xff means unknown.
 
 ## CNC (Noise Cancellation) Details
 - Read: GET [1.5] returns `[numSteps, currentStep, flags]`

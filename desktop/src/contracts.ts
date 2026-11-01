@@ -74,6 +74,8 @@ export interface DeviceIdentity {
 export interface BatteryStatus {
   percent: number;
   charging: boolean | null;
+  left_percent: number | null;
+  right_percent: number | null;
   case_percent: number | null;
 }
 
@@ -269,6 +271,10 @@ function isNonNegativeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
+function isNullablePercent(value: unknown): value is number | null {
+  return value === null || (isNonNegativeInteger(value) && value <= 100);
+}
+
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
@@ -393,11 +399,9 @@ export function isDeviceSnapshot(value: unknown): value is DeviceSnapshot {
         value.battery.charging === null ||
         typeof value.battery.charging === "boolean"
       ) ||
-      !(
-        value.battery.case_percent === null ||
-        (isNonNegativeInteger(value.battery.case_percent) &&
-          value.battery.case_percent <= 100)
-      ))
+      !isNullablePercent(value.battery.left_percent) ||
+      !isNullablePercent(value.battery.right_percent) ||
+      !isNullablePercent(value.battery.case_percent))
   )
     return false;
   if (

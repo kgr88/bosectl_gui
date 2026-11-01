@@ -6,6 +6,7 @@ from pybmap.backend.protocol import ProtocolError
 from pybmap.backend.service import BackendService
 from pybmap.discovery import _device_from_name
 from pybmap.errors import BmapConnectionError
+from pybmap.types import BatteryLevels
 
 EqBand = namedtuple("EqBand", ["name", "min_val", "max_val", "current"])
 Audio = namedtuple(
@@ -47,7 +48,7 @@ class FakeConnection:
         }
 
     def battery_levels(self):
-        return 72, None
+        return BatteryLevels(72, None, None, None)
 
     def firmware(self):
         return "4.8.1"
@@ -104,7 +105,7 @@ class FakeUltraConnection:
         }
 
     def battery_levels(self):
-        return 88, 30
+        return BatteryLevels(60, 80, 60, 20)
 
     def firmware(self):
         return "8.2.20"
@@ -175,6 +176,8 @@ def test_manual_connect_returns_capability_driven_qc35_snapshot():
     assert snapshot["battery"] == {
         "percent": 72,
         "charging": None,
+        "left_percent": None,
+        "right_percent": None,
         "case_percent": None,
     }
     assert snapshot["capabilities"]["noise_control"]["kind"] == "anr"
@@ -295,7 +298,13 @@ def test_ultra_snapshot_reports_eq_profiles_and_audio_settings_from_features():
             }
         },
     )
-    assert snapshot["battery"]["case_percent"] == 30
+    assert snapshot["battery"] == {
+        "percent": 60,
+        "charging": None,
+        "left_percent": 80,
+        "right_percent": 60,
+        "case_percent": 20,
+    }
     assert snapshot["capabilities"]["noise_control"]["kind"] == "cnc"
     assert [band["id"] for band in snapshot["capabilities"]["equalizer"]] == [
         "bass",

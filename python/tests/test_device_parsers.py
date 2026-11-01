@@ -13,7 +13,6 @@ from pybmap.devices.parsers import (
     parse_battery,
     parse_bool,
     parse_buttons,
-    parse_case_battery,
     parse_cnc,
     parse_eq,
     parse_firmware,
@@ -33,23 +32,20 @@ class TestParseBattery:
     def test_from_capture(self):
         # "2.2": "50ffff00" — battery STATUS payload
         payload = bytes.fromhex("50ffff00")
-        assert parse_battery(payload) == 0x50  # 80%
+        assert parse_battery(payload) == (0x50, None, None, None)  # 80%
 
     def test_empty(self):
-        assert parse_battery(b"") is None
+        assert parse_battery(b"") == (None, None, None, None)
 
-
-class TestParseCaseBattery:
     def test_earbuds_capture(self):
-        # QC Ultra Earbuds (2nd Gen): left, right, buds, then case at 30%.
-        payload = bytes.fromhex("46ffff0146ffff0246ffff041effff03")
-        assert parse_case_battery(payload) == 30
+        # QC Ultra Earbuds (2nd Gen) with the left earbud in the case:
+        # right 60%, left 80%, component 4 60%, case 20%.
+        payload = bytes.fromhex("3cffff0150ffff023cffff0414ffff03")
+        assert parse_battery(payload) == (60, 80, 60, 20)
 
-    def test_headphones_have_no_case(self):
-        assert parse_case_battery(bytes.fromhex("50ffff00")) is None
-
-    def test_unknown_case_level(self):
-        assert parse_case_battery(bytes.fromhex("46ffff01ffffff03")) is None
+    def test_earbuds_unknown_level(self):
+        payload = bytes.fromhex("ffffff0150ffff02ffffff03")
+        assert parse_battery(payload) == (80, 80, None, None)
 
 
 class TestParseFirmware:

@@ -73,7 +73,13 @@ function connected(
         device_type: "qc35",
         address: "AA:BB:CC:35:00:01",
       },
-      battery: { percent: 72, charging: null, case_percent: null },
+      battery: {
+        percent: 72,
+        charging: null,
+        left_percent: null,
+        right_percent: null,
+        case_percent: null,
+      },
       firmware: { version: "4.8.1" },
       connection: { state: "connected", reason: null, rfcomm_channel: 8 },
       capabilities: {
@@ -128,7 +134,13 @@ function connected(
       device_type: "qc_ultra2",
       address: "AA:BB:CC:02:00:01",
     },
-    battery: { percent: 88, charging: false, case_percent: null },
+    battery: {
+      percent: 88,
+      charging: false,
+      left_percent: null,
+      right_percent: null,
+      case_percent: null,
+    },
     firmware: { version: "8.2.20" },
     connection: { state: "connected", reason: null, rfcomm_channel: 2 },
     capabilities: {

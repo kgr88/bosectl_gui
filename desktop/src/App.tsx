@@ -307,10 +307,27 @@ export default function App() {
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
             <StatusPill state={state.connection} />
-            {connected && snapshot.battery && (
+            {connected &&
+              snapshot.battery &&
+              snapshot.battery.left_percent == null &&
+              snapshot.battery.right_percent == null && (
+                <Battery
+                  percent={snapshot.battery.percent}
+                  charging={snapshot.battery.charging}
+                />
+              )}
+            {connected && snapshot.battery?.left_percent != null && (
               <Battery
-                percent={snapshot.battery.percent}
-                charging={snapshot.battery.charging}
+                label="Left"
+                percent={snapshot.battery.left_percent}
+                charging={null}
+              />
+            )}
+            {connected && snapshot.battery?.right_percent != null && (
+              <Battery
+                label="Right"
+                percent={snapshot.battery.right_percent}
+                charging={null}
               />
             )}
             {connected && snapshot.battery?.case_percent != null && (

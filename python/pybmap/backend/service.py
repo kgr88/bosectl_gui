@@ -510,11 +510,13 @@ class BackendService:
 
 
 def _battery_status(connection):
-    percent, case_percent = connection.battery_levels()
+    levels = connection.battery_levels()
     return BatteryStatus(
-        max(0, min(100, int(percent))),
+        max(0, min(100, int(levels.percent))),
         None,
-        None if case_percent is None else max(0, min(100, int(case_percent))),
+        levels.left,
+        levels.right,
+        levels.case,
     )
 
 
