@@ -16,7 +16,8 @@ import {
   rowDetail,
   section,
   sectionFooter,
-  sectionHeader,
+  sectionHeaderRow,
+  sectionTitle,
   textButton,
 } from "../styles/ui";
 
@@ -142,8 +143,8 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
   return (
     <>
       <section className={section} aria-labelledby="profiles-title">
-        <div className="mb-1.5 flex items-baseline justify-between px-4">
-          <h2 className={`${sectionHeader} m-0 px-0`} id="profiles-title">
+        <div className={sectionHeaderRow}>
+          <h2 className={sectionTitle} id="profiles-title">
             Modes
           </h2>
           <span className="flex items-baseline gap-3">
@@ -162,13 +163,13 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
             </button>
           </span>
         </div>
-        {!busy && list?.profiles.length === 0 ? (
+        {!list || list.profiles.length === 0 ? (
           <div className={`${group} px-4 py-6 text-center text-muted`}>
-            No modes yet.
+            {list ? "No modes yet." : "Loading…"}
           </div>
         ) : (
           <ul className={groupList}>
-            {list?.profiles.map((profile) => {
+            {list.profiles.map((profile) => {
               const details = [
                 profile.anc_toggle
                   ? `Noise cancelling ${profileAncStrength(profile.cnc_level)}`

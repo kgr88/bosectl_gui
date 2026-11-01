@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import type {
   CSSProperties,
   DialogHTMLAttributes,
@@ -7,9 +7,11 @@ import type {
 } from "react";
 import { select } from "../styles/ui";
 
-// Matches the option height and list padding in app.css.
+// Matches the option height, list padding, and option padding plus
+// checkmark width in app.css.
 const OPTION_HEIGHT = 32;
 const LIST_PADDING = 8;
+const OPTION_CHROME = 48;
 
 // Choose the side the list opens on before it opens, so the CSS can square
 // the corners where the button and the list meet.
@@ -20,17 +22,46 @@ function chooseDropDirection(element: HTMLSelectElement) {
   element.dataset.drop = below < needed && rect.top > below ? "up" : "down";
 }
 
+// The open list is as wide as the button, so the button must fit the longest
+// option. Options are measured in the bold weight used for the checked one.
+function fitLongestOption(element: HTMLSelectElement) {
+  if (!CSS.supports("appearance", "base-select")) return;
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return;
+  const style = getComputedStyle(element);
+  context.font = `600 ${style.fontSize} ${style.fontFamily}`;
+  const widest = Math.max(
+    0,
+    ...Array.from(
+      element.options,
+      (option) => context.measureText(option.text).width,
+    ),
+  );
+  element.style.setProperty(
+    "--fit-width",
+    `${Math.ceil(widest + OPTION_CHROME)}px`,
+  );
+}
+
 export function Select({
   className,
+  children,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement>) {
+  const ref = useRef<HTMLSelectElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) fitLongestOption(ref.current);
+  }, [children]);
   return (
     <select
       {...props}
+      ref={ref}
       className={`${select} ${className ?? ""}`}
       onPointerDown={(event) => chooseDropDirection(event.currentTarget)}
       onKeyDown={(event) => chooseDropDirection(event.currentTarget)}
-    />
+    >
+      {children}
+    </select>
   );
 }
 

@@ -10,7 +10,8 @@ import {
   rowDetail,
   section,
   sectionFooter,
-  sectionHeader,
+  sectionHeaderRow,
+  sectionTitle,
   textButton,
 } from "../styles/ui";
 
@@ -86,8 +87,8 @@ export function ConnectionPage({
         </section>
       ) : (
         <section className={section} aria-labelledby="connection-title">
-          <div className="mb-1.5 flex items-baseline justify-between px-4">
-            <h2 className={`${sectionHeader} m-0 px-0`} id="connection-title">
+          <div className={sectionHeaderRow}>
+            <h2 className={sectionTitle} id="connection-title">
               My Headphones
             </h2>
             <button
@@ -105,7 +106,9 @@ export function ConnectionPage({
                 <span>
                   {device.name}
                   {!device.supported && (
-                    <small className={rowDetail}>Not supported</small>
+                    <small className={rowDetail}>
+                      Not recognized. Use “Can’t find your headphones?” below.
+                    </small>
                   )}
                 </span>
                 <button

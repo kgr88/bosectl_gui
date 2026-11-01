@@ -3,7 +3,13 @@ import { api } from "../api";
 import type { DeviceSnapshot } from "../contracts";
 import { LatestWriteQueue } from "../state/latestWrite";
 import { Slider } from "../components/Controls";
-import { group, section, sectionHeader } from "../styles/ui";
+import {
+  group,
+  section,
+  sectionHeader,
+  segment,
+  segmentedControl,
+} from "../styles/ui";
 
 interface Props {
   snapshot: DeviceSnapshot;
@@ -110,13 +116,13 @@ export function HomePage({ snapshot, onSnapshot, onError }: Props) {
         </div>
       ) : (
         <div
-          className="flex gap-0.5 rounded-[12px] bg-fill p-0.5"
+          className={`${segmentedControl} rounded-[12px]`}
           role="group"
           aria-label="Noise control mode"
         >
           {capability.options.map((option) => (
             <button
-              className={`${value === option.value ? "bg-segment font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-10 min-w-20 flex-1 cursor-pointer rounded-[10px] border-0 px-3 text-ink transition-all`}
+              className={`${segment(value === option.value)} min-h-10 min-w-20 rounded-[10px]`}
               type="button"
               aria-pressed={value === option.value}
               key={option.value}

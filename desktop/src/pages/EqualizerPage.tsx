@@ -3,7 +3,13 @@ import { api } from "../api";
 import type { DeviceSnapshot } from "../contracts";
 import { LatestWriteQueue } from "../state/latestWrite";
 import { Slider } from "../components/Controls";
-import { group, section, sectionHeader, textButton } from "../styles/ui";
+import {
+  group,
+  section,
+  sectionHeaderRow,
+  sectionTitle,
+  textButton,
+} from "../styles/ui";
 
 interface Props {
   snapshot: DeviceSnapshot;
@@ -61,8 +67,8 @@ export function EqualizerPage({ snapshot, onSnapshot, onError }: Props) {
 
   return (
     <section className={section} aria-labelledby="eq-title">
-      <div className="mb-1.5 flex items-baseline justify-between px-4">
-        <h2 className={`${sectionHeader} m-0 px-0`} id="eq-title">
+      <div className={sectionHeaderRow}>
+        <h2 className={sectionTitle} id="eq-title">
           Equalizer
         </h2>
         <button className={textButton} type="button" onClick={reset}>

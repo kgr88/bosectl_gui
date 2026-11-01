@@ -17,7 +17,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { initialDeviceState, reduceDeviceEvent } from "./state/deviceState";
 import { durableConnectionTarget } from "./state/connectionTarget";
 import { friendlyError } from "./errorMessages";
-import { textButton } from "./styles/ui";
+import { segment, segmentedControl, textButton } from "./styles/ui";
 
 type Page = "home" | "equalizer" | "profiles" | "settings" | "diagnostics";
 
@@ -34,6 +34,14 @@ type Theme = "system" | "light" | "dark";
 
 function parseTheme(value: string | null): Theme {
   return value === "light" ? "light" : value === "dark" ? "dark" : "system";
+}
+
+// Flip what is shown. Going back to the system look returns to "system", so
+// every click makes a visible change.
+function toggledTheme(theme: Theme): Theme {
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const shownDark = theme === "dark" || (theme === "system" && systemDark);
+  return shownDark === !systemDark ? "system" : shownDark ? "light" : "dark";
 }
 
 export default function App() {
@@ -282,11 +290,6 @@ export default function App() {
     { id: "diagnostics", label: "About", show: true },
   ];
   const visiblePages = pages.filter((item) => item.show);
-  const nextTheme: Record<Theme, Theme> = {
-    system: "light",
-    light: "dark",
-    dark: "system",
-  };
   const themeLabels: Record<Theme, string> = {
     system: "Automatic",
     light: "Light",
@@ -298,7 +301,9 @@ export default function App() {
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="m-0 text-[32px] leading-tight font-bold tracking-[-0.02em]">
-            {connected ? (snapshot.identity?.name ?? "Headphones") : "Welcome"}
+            {connected || state.connection === "reconnecting"
+              ? (snapshot?.identity?.name ?? "Headphones")
+              : "Welcome"}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
             <StatusPill state={state.connection} />
@@ -315,14 +320,14 @@ export default function App() {
           className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-fill text-ink hover:opacity-80"
           aria-label={`Appearance: ${themeLabels[theme]}`}
           title={`Appearance: ${themeLabels[theme]}`}
-          onClick={() => setTheme(nextTheme[theme])}
+          onClick={() => setTheme(toggledTheme(theme))}
         >
           <ThemeIcon theme={theme} />
         </button>
       </header>
       {error && (
         <div
-          className="mt-6 flex items-center gap-3 rounded-[14px] bg-surface px-4 py-3 shadow-card"
+          className="mt-6 flex items-start gap-3 rounded-[14px] bg-surface px-4 py-3 shadow-card"
           role="alert"
         >
           <span
@@ -331,7 +336,15 @@ export default function App() {
           >
             !
           </span>
-          <span className="flex-1">{friendlyError(error)}</span>
+          <span className="min-w-0 flex-1">
+            {friendlyError(error)}
+            <details className="mt-1 text-[13px] text-muted">
+              <summary className="w-fit cursor-pointer">Details</summary>
+              <span className="mt-1 block [overflow-wrap:anywhere]">
+                {error.code}: {error.message}
+              </span>
+            </details>
+          </span>
           <button
             type="button"
             className={textButton}
@@ -356,13 +369,13 @@ export default function App() {
       ) : (
         <>
           <nav
-            className="mt-6 flex gap-0.5 overflow-x-auto rounded-[10px] bg-fill p-0.5 forced-colors:border forced-colors:border-[CanvasText]"
+            className={`${segmentedControl} mt-6 overflow-x-auto rounded-[10px] forced-colors:border forced-colors:border-[CanvasText]`}
             aria-label="Sections"
           >
             {visiblePages.map((item) => (
               <button
                 type="button"
-                className={`${page === item.id ? "bg-segment font-semibold shadow-control" : "bg-transparent hover:opacity-70"} min-h-8 flex-1 cursor-pointer rounded-[8px] border-0 px-3 py-1 text-[13px] whitespace-nowrap text-ink transition-all`}
+                className={`${segment(page === item.id)} min-h-8 rounded-[8px] py-1 text-[13px]`}
                 aria-current={page === item.id ? "page" : undefined}
                 key={item.id}
                 onClick={() => setPage(item.id)}
@@ -421,12 +434,15 @@ function Battery({
   percent: number;
   charging: boolean | null;
 }) {
-  const level = Math.max(0, Math.min(100, percent));
-  const color = charging ? "bg-success" : level <= 20 ? "bg-danger" : "bg-ink";
+  const color = charging
+    ? "bg-success"
+    : percent <= 20
+      ? "bg-danger"
+      : "bg-ink";
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[13px] text-muted"
-      aria-label={`Battery ${level} percent${charging ? ", charging" : ""}`}
+      aria-label={`Battery ${percent} percent${charging ? ", charging" : ""}`}
     >
       <span
         aria-hidden="true"
@@ -434,10 +450,10 @@ function Battery({
       >
         <span
           className={`rounded-[1.5px] ${color}`}
-          style={{ width: `${level}%` }}
+          style={{ width: `${percent}%` }}
         />
       </span>
-      {level}%{charging && " · Charging"}
+      {percent}%{charging && " · Charging"}
     </span>
   );
 }
