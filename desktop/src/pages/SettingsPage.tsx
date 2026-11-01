@@ -5,16 +5,8 @@ import type {
   SettingCapability,
   SettingValue,
 } from "../contracts";
-import { Slider, Toggle } from "../components/Controls";
-import {
-  group,
-  groupList,
-  input,
-  row,
-  rowDetail,
-  section,
-  select,
-} from "../styles/ui";
+import { Select, Slider, Toggle } from "../components/Controls";
+import { group, groupList, input, row, rowDetail, section } from "../styles/ui";
 
 interface Props {
   snapshot: DeviceSnapshot;
@@ -43,8 +35,7 @@ function SettingInput({
     );
   if (capability.kind === "choice")
     return (
-      <select
-        className={select}
+      <Select
         value={String(value ?? "")}
         disabled={busy || !capability.writable}
         onChange={(e) => onChange(e.currentTarget.value)}
@@ -54,7 +45,7 @@ function SettingInput({
             {option.label}
           </option>
         ))}
-      </select>
+      </Select>
     );
   if (capability.kind === "range")
     return (

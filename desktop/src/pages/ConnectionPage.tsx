@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ConnectionTarget, DiscoveredDevice } from "../contracts";
+import { Select } from "../components/Controls";
 import {
   button,
   group,
@@ -10,7 +11,6 @@ import {
   section,
   sectionFooter,
   sectionHeader,
-  select,
   textButton,
 } from "../styles/ui";
 
@@ -139,8 +139,7 @@ export function ConnectionPage({
           <div className={`${group} divide-y divide-separator`}>
             <label className={row}>
               <span>Model</span>
-              <select
-                className={select}
+              <Select
                 value={deviceType}
                 onChange={(event) =>
                   setDeviceType(event.currentTarget.value as typeof deviceType)
@@ -148,7 +147,7 @@ export function ConnectionPage({
               >
                 <option value="qc_ultra2">QuietComfort Ultra 2</option>
                 <option value="qc35">QuietComfort 35 / 35 II</option>
-              </select>
+              </Select>
             </label>
             <label className={row}>
               <span>Bluetooth address</span>

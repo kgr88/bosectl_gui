@@ -6,7 +6,7 @@ import type {
   ProfileInput,
   ProfileList,
 } from "../contracts";
-import { Slider, Toggle } from "../components/Controls";
+import { Select, Slider, Toggle } from "../components/Controls";
 import {
   button,
   dangerTextButton,
@@ -19,7 +19,6 @@ import {
   section,
   sectionFooter,
   sectionHeader,
-  select,
   textButton,
 } from "../styles/ui";
 
@@ -296,8 +295,7 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
             </label>
             <label className={row}>
               <span>Spatial audio</span>
-              <select
-                className={select}
+              <Select
                 value={draft.spatial}
                 onChange={(event) =>
                   setDraft({
@@ -312,7 +310,7 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
                     {label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className={row}>
               <span>Wind block</span>

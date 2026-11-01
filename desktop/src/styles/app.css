@@ -151,12 +151,22 @@
   select:open {
     @apply rounded-b-none outline-none;
   }
+  select[data-drop="up"]:open {
+    @apply rounded-t-none rounded-b-[10px];
+  }
   select:open::picker-icon {
     rotate: 180deg;
   }
+  /* The Select component sets data-drop, so the browser must not flip. */
   ::picker(select) {
-    @apply rounded-b-[10px] border-0 bg-control py-1 shadow-card;
+    @apply m-0 rounded-b-[10px] border-0 bg-control py-1 shadow-card;
     inline-size: anchor-size(inline);
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: none;
+  }
+  select[data-drop="up"]::picker(select) {
+    @apply rounded-t-[10px] rounded-b-none;
+    position-area: block-start span-inline-end;
   }
   option {
     @apply flex min-h-8 cursor-pointer items-center gap-2 bg-transparent px-3 py-1;

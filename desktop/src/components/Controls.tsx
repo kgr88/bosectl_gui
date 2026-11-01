@@ -1,4 +1,36 @@
-import type { CSSProperties, InputHTMLAttributes } from "react";
+import type {
+  CSSProperties,
+  InputHTMLAttributes,
+  SelectHTMLAttributes,
+} from "react";
+import { select } from "../styles/ui";
+
+// Matches the option height and list padding in app.css.
+const OPTION_HEIGHT = 32;
+const LIST_PADDING = 8;
+
+// Choose the side the list opens on before it opens, so the CSS can square
+// the corners where the button and the list meet.
+function chooseDropDirection(element: HTMLSelectElement) {
+  const rect = element.getBoundingClientRect();
+  const needed = element.options.length * OPTION_HEIGHT + LIST_PADDING;
+  const below = window.innerHeight - rect.bottom;
+  element.dataset.drop = below < needed && rect.top > below ? "up" : "down";
+}
+
+export function Select({
+  className,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={`${select} ${className ?? ""}`}
+      onPointerDown={(event) => chooseDropDirection(event.currentTarget)}
+      onKeyDown={(event) => chooseDropDirection(event.currentTarget)}
+    />
+  );
+}
 
 type SliderProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
   min: number;
