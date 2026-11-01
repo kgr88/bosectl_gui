@@ -106,10 +106,11 @@ export function Toggle({ className, ...props }: ToggleProps) {
 
 type SheetProps = Omit<DialogHTMLAttributes<HTMLDialogElement>, "onCancel"> & {
   onClose: () => void;
+  narrow?: boolean;
 };
 
 // A modal sheet. It opens on mount; the parent closes it by unmounting it.
-export function Sheet({ onClose, className, ...props }: SheetProps) {
+export function Sheet({ onClose, narrow, className, ...props }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     ref.current?.showModal();
@@ -118,11 +119,65 @@ export function Sheet({ onClose, className, ...props }: SheetProps) {
     <dialog
       {...props}
       ref={ref}
-      className={`m-auto max-h-[calc(100vh-48px)] w-[min(520px,calc(100vw-32px))] flex-col overflow-hidden rounded-[14px] border-0 bg-app p-0 text-ink shadow-control backdrop:bg-black/40 open:flex ${className ?? ""}`}
+      className={`m-auto max-h-[calc(100vh-48px)] ${narrow ? "w-[min(300px,calc(100vw-32px))]" : "w-[min(520px,calc(100vw-32px))]"} flex-col overflow-hidden rounded-[14px] border-0 bg-app p-0 text-ink shadow-control backdrop:bg-black/40 open:flex ${className ?? ""}`}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
     />
+  );
+}
+
+// An alert that asks the user to confirm a destructive action. The webview
+// does not show window.confirm, so the app draws its own.
+export function ConfirmAlert({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const button =
+    "min-h-11 flex-1 cursor-pointer border-0 bg-transparent text-[17px]";
+  return (
+    <Sheet
+      narrow
+      role="alertdialog"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+      onClose={onCancel}
+    >
+      <div className="px-4 pt-5 pb-4 text-center">
+        <h2 className="m-0 text-[17px] font-semibold" id="confirm-title">
+          {title}
+        </h2>
+        <p className="mt-1 mb-0 text-[13px]" id="confirm-message">
+          {message}
+        </p>
+      </div>
+      <div className="flex divide-x divide-separator border-t border-separator">
+        <button
+          className={`${button} text-accent`}
+          type="button"
+          autoFocus
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          className={`${button} font-semibold text-danger`}
+          type="button"
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </Sheet>
   );
 }

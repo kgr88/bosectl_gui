@@ -6,7 +6,13 @@ import type {
   ProfileInput,
   ProfileList,
 } from "../contracts";
-import { Select, Sheet, Slider, Toggle } from "../components/Controls";
+import {
+  ConfirmAlert,
+  Select,
+  Sheet,
+  Slider,
+  Toggle,
+} from "../components/Controls";
 import {
   dangerTextButton,
   group,
@@ -54,6 +60,7 @@ export function deviceCncLevel(ancStrength: number) {
 export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
   const [list, setList] = useState<ProfileList | null>(null);
   const [draft, setDraft] = useState<ProfileInput | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -101,11 +108,7 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
   }
 
   async function remove(profile: Profile) {
-    if (
-      !profile.editable ||
-      !window.confirm(`Delete profile “${profile.name}”?`)
-    )
-      return;
+    setPendingDelete(null);
     setBusy(true);
     try {
       setList(await api.deleteProfile(snapshot.generation, profile.profile_id));
@@ -213,7 +216,7 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
                         aria-label={`Delete ${profile.name}`}
                         type="button"
                         disabled={busy}
-                        onClick={() => void remove(profile)}
+                        onClick={() => setPendingDelete(profile)}
                       >
                         Delete
                       </button>
@@ -227,6 +230,15 @@ export function ProfilesPage({ snapshot, onSnapshot, onError }: Props) {
         <p className={sectionFooter}>Select a mode to use it.</p>
       </section>
 
+      {pendingDelete && (
+        <ConfirmAlert
+          title={`Delete “${pendingDelete.name}”?`}
+          message="You can’t undo this."
+          confirmLabel="Delete"
+          onConfirm={() => void remove(pendingDelete)}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
       {draft && (
         <Sheet aria-labelledby="profile-editor-title" onClose={close}>
           <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-separator px-4 py-3">
